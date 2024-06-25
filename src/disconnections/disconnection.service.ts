@@ -53,7 +53,7 @@ export class DisconnectionService {
       );
     });
 
-    return await Promise.allSettled(promises);
+    return Promise.allSettled(promises);
   }
 
   async getDisconnectionsCalendar(

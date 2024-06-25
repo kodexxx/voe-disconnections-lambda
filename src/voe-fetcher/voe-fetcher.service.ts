@@ -1,6 +1,11 @@
 import axios from 'axios';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
 import { parse as HTMLParse } from 'node-html-parser';
+import { getDateWithTzOffset } from '../common/utils/date.util';
+import {
+  UKRAINE_TZ_OFFSET_MINUTES,
+  VOE_CELL_DURATION_MS,
+} from './voe-fetcher.constants';
 
 export class VoeFetcherService {
   async getDisconnections(
@@ -74,22 +79,18 @@ export class VoeFetcherService {
           const timeMatches = time.time.match(/(\d{2}):(\d{2})/);
           const [, hour, minutes] = timeMatches ?? [];
 
-          const ts = new Date(
-            new Date().getFullYear(),
+          const currentYear = new Date().getFullYear();
+          const from = getDateWithTzOffset(
+            currentYear,
             Number(month) - 1,
             Number(day),
             Number(hour),
             Number(minutes),
+            UKRAINE_TZ_OFFSET_MINUTES,
           );
-          const ukraineTZOffset = -180;
-          const tz = new Date().getTimezoneOffset();
-          const tsTZ = new Date(
-            ts.getTime() + (tz + ukraineTZOffset) * 1000 * 60,
-          );
+          const to = new Date(from.getTime() + VOE_CELL_DURATION_MS);
 
-          const toTZ = new Date(tsTZ.getTime() + 60 * 60 * 1000);
-
-          return { from: tsTZ, to: toTZ, possibility: time.possibility };
+          return { from, to, possibility: time.possibility };
         });
       },
     );
