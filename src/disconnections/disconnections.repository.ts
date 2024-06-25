@@ -68,7 +68,7 @@ export class DisconnectionsRepository {
             S: JSON.stringify(update.value),
           },
         }),
-        lastUpdateAt: {
+        lastUpdatedAt: {
           S: new Date().toISOString(),
         },
       },
