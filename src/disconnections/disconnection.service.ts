@@ -27,7 +27,25 @@ export class DisconnectionService {
       }
     }
 
-    return this.voeFetcherService.getDisconnections(cityId, streetId, houseId);
+    const data = await this.voeFetcherService.getDisconnections(
+      cityId,
+      streetId,
+      houseId,
+    );
+
+    const existPrefetch = await this.disconnectionsRepository.findOne(
+      cityId,
+      streetId,
+      houseId,
+    );
+    if (!existPrefetch) {
+      await this.disconnectionsRepository.updateOne(cityId, streetId, houseId, {
+        alias: `Auto added #${Date.now()}`,
+        value: data,
+      });
+    }
+
+    return data;
   }
 
   async prefetchDisconnections() {
