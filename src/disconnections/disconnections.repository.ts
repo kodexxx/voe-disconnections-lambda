@@ -10,10 +10,13 @@ import {
   VoeDisconnectionEntity,
   VoeDisconnectionValueItem,
 } from './interfaces/disconnections-item.interface';
+import { DisconnectionsOptionsInterface } from './interfaces/disconnections-options.interface';
 
 export class DisconnectionsRepository {
-  private readonly client = new DynamoDBClient();
-  private readonly tableName = 'voe-disconnection';
+  constructor(
+    private readonly client: DynamoDBClient,
+    private readonly options: DisconnectionsOptionsInterface,
+  ) {}
 
   async findOne(
     cityId: string,
@@ -21,7 +24,7 @@ export class DisconnectionsRepository {
     houseId: string,
   ): Promise<VoeDisconnectionEntity> {
     const cmd = new GetItemCommand({
-      TableName: this.tableName,
+      TableName: this.options.tableName,
       Key: {
         args: {
           S: querystring.stringify({ cityId, streetId, houseId }),
@@ -37,7 +40,7 @@ export class DisconnectionsRepository {
 
   async findMany() {
     const cmd = new ScanCommand({
-      TableName: this.tableName,
+      TableName: this.options.tableName,
     });
 
     const items = await this.client.send(cmd);
@@ -52,7 +55,7 @@ export class DisconnectionsRepository {
     update: Partial<VoeDisconnectionEntity>,
   ) {
     const updateCmd = new PutItemCommand({
-      TableName: this.tableName,
+      TableName: this.options.tableName,
 
       Item: {
         args: {
