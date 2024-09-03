@@ -1,15 +1,11 @@
 import 'reflect-metadata';
-import { getPayload } from './common/utils/validation.util';
-import { GetCalendarQueryDto } from './disconnections/dto/get-calendar-query.dto';
+import {getVoeFetcherModule} from "./voe-fetcher/voe-fetcher.module";
 
-const test = async () => {
-  // return getDisconnectionsModule()
-  //     .disconnectionService
-  //     .getDisconnectionsWithCache('510100000', '1294', '33672')
-  try {
-    await getPayload({ lol: true }, GetCalendarQueryDto);
-  } catch (e) {
-    console.error(e);
-  }
+const test = () => {
+  return getVoeFetcherModule().voeFetcherService.getDisconnections('510100000', '1294', '33672');
 };
-test().then(console.log).catch(console.error);
+test().then(console.log).catch(err => {
+  console.error(err);
+});
+
+

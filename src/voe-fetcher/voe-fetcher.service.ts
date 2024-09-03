@@ -18,7 +18,7 @@ export class VoeFetcherService {
       streetId,
       houseId,
     );
-    const data = response?.[1]?.data;
+    const data = response?.find(v => v.command === 'insert')?.data;
     if (!data) {
       throw new Error('No data');
     }
@@ -125,31 +125,21 @@ export class VoeFetcherService {
     const data = await axios.post(
       'https://www.voe.com.ua/disconnection/detailed',
       {
-        // search_type: 0,
-        // city: 'м. Вінниця (Вінницька Область/М.Вінниця)',
         city_id: cityId,
-        // street: 'вулиця Зодчих',
         street_id: streetId,
-        // house: '1',
         house_id: houseId,
-        // form_build_id: 'form-zgIeyrfB6SoQ1D3mzF36cyyggdZQ2L3_qSf9u3kpgAk',
-        form_id: 'disconnection_detailed_search_form',
-        _triggering_element_name: 'op',
-        _triggering_element_value: 'Показати',
-        _drupal_ajax: '1',
-        ajax_page_state: {
-          theme: 'personal',
-          theme_token: '',
-          libraries:
-            'ajax_forms/main,classy/base,classy/messages,core/drupal.autocomplete,core/internal.jquery.form,core/normalize,custom/custom,drupal_noty_messages/drupal_noty_messages,extlink/drupal.extlink,filter/caption,paragraphs/drupal.paragraphs.unpublished,personal/global-styling,personal/sticky,personal/toggle_info,personal/type_navigation_unit,poll/drupal.poll-links,search_block/search_block.styles,styling_form_errors/styling_form_errors,system/base',
-        },
+        form_id: 'disconnection_detailed_search_form'
       },
       {
         params: {
           ajax_form: 1,
           _wrapper_format: 'drupal_ajax',
         },
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Accept': '*/*',
+          'Content-Type': 'multipart/form-data',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'
+        },
       },
     );
 
