@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
 import { parse as HTMLParse } from 'node-html-parser';
 import { getDateWithTzOffset } from '../common/utils/date.util';
@@ -6,6 +5,7 @@ import {
   UKRAINE_TZ_OFFSET_MINUTES,
   VOE_CELL_DURATION_MS,
 } from './voe-fetcher.constants';
+import querystring from 'querystring';
 
 export class VoeFetcherService {
   async getDisconnections(
@@ -18,7 +18,7 @@ export class VoeFetcherService {
       streetId,
       houseId,
     );
-    const data = response?.find(v => v.command === 'insert')?.data;
+    const data = response?.find((v) => v.command === 'insert')?.data;
     if (!data) {
       throw new Error('No data');
     }
@@ -122,27 +122,25 @@ export class VoeFetcherService {
     streetId: string,
     houseId: string,
   ) {
-    const data = await axios.post(
-      'https://www.voe.com.ua/disconnection/detailed',
+    const params = querystring.stringify({
+      ajax_form: 1,
+      _wrapper_format: 'drupal_ajax',
+    });
+    const response = await fetch(
+      `https://www.voe.com.ua/disconnection/detailed?${params}`,
       {
-        city_id: cityId,
-        street_id: streetId,
-        house_id: houseId,
-        form_id: 'disconnection_detailed_search_form'
-      },
-      {
-        params: {
-          ajax_form: 1,
-          _wrapper_format: 'drupal_ajax',
-        },
         headers: {
-          'Accept': '*/*',
-          'Content-Type': 'multipart/form-data',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'
+          'content-type': 'application/x-www-form-urlencoded',
         },
+        method: 'POST',
+        body: new URLSearchParams({
+          city_id: cityId,
+          street_id: streetId,
+          house_id: houseId,
+          form_id: 'disconnection_detailed_search_form',
+        }),
       },
     );
-
-    return data.data;
+    return response.json();
   }
 }
