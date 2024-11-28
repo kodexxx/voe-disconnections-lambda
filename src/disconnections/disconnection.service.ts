@@ -3,6 +3,8 @@ import { createEvents, EventAttributes } from 'ics';
 import { getDateArray } from '../common/utils/ical-types.util';
 import { DisconnectionsRepository } from './disconnections.repository';
 import querystring from 'querystring';
+import { mergeInterval } from '../common/utils/date.util';
+import { elapseTime } from '../common/utils/time.utils';
 
 export class DisconnectionService {
   constructor(
@@ -52,23 +54,31 @@ export class DisconnectionService {
     const items = await this.disconnectionsRepository.findMany();
 
     const promises = items.map(async (v) => {
-      const { cityId, streetId, houseId } = querystring.parse(v.args);
-      const value = await this.getDisconnectionsWithCache(
-        cityId.toString(),
-        streetId.toString(),
-        houseId.toString(),
-        true,
-      );
+      const elapse = elapseTime();
+      try {
+        const { cityId, streetId, houseId } = querystring.parse(v.args);
+        console.log(`Start update ${v.alias}`);
+        const value = await this.getDisconnectionsWithCache(
+          cityId.toString(),
+          streetId.toString(),
+          houseId.toString(),
+          true,
+        );
 
-      await this.disconnectionsRepository.updateOne(
-        cityId.toString(),
-        streetId.toString(),
-        houseId.toString(),
-        {
-          ...v,
-          value,
-        },
-      );
+        await this.disconnectionsRepository.updateOne(
+          cityId.toString(),
+          streetId.toString(),
+          houseId.toString(),
+          {
+            ...v,
+            value: mergeInterval([...v.value, ...value]),
+          },
+        );
+        console.log(`Updated ${v.alias}, took ${elapse()}ms`);
+      } catch (e) {
+        console.error(e);
+        console.log(`Update failed ${v.alias}, took ${elapse()}ms`);
+      }
     });
 
     return Promise.allSettled(promises);

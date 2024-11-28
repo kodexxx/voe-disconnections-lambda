@@ -1,6 +1,6 @@
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
 import { parse as HTMLParse } from 'node-html-parser';
-import { getDateWithTzOffset } from '../common/utils/date.util';
+import { getDateWithTzOffset, mergeInterval } from '../common/utils/date.util';
 import {
   UKRAINE_TZ_OFFSET_MINUTES,
   VOE_CELL_DURATION_MS,
@@ -95,26 +95,7 @@ export class VoeFetcherService {
       },
     );
 
-    if (!items.length) {
-      return [];
-    }
-    const mergedIntervals = [items[0]];
-
-    for (let i = 1; i < items.length; i++) {
-      const current = items[i];
-      const lastMerged = mergedIntervals[mergedIntervals.length - 1];
-
-      if (
-        current.from.getTime() === lastMerged.to.getTime() &&
-        current.possibility === lastMerged.possibility
-      ) {
-        lastMerged.to = current.to;
-      } else {
-        mergedIntervals.push(current);
-      }
-    }
-
-    return mergedIntervals;
+    return mergeInterval(items);
   }
 
   private async getDetailedDisconnection(
