@@ -1,10 +1,11 @@
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
 import { parse as HTMLParse } from 'node-html-parser';
-import { getDateWithTzOffset, mergeInterval } from '../common/utils/date.util';
 import {
-  UKRAINE_TZ_OFFSET_MINUTES,
-  VOE_CELL_DURATION_MS,
-} from './voe-fetcher.constants';
+  getDateWithTzOffset,
+  getUkraineUtcOffsetMinutes,
+  mergeInterval,
+} from '../common/utils/date.util';
+import { VOE_CELL_DURATION_MS } from './voe-fetcher.constants';
 import querystring from 'querystring';
 
 export class VoeFetcherService {
@@ -86,7 +87,7 @@ export class VoeFetcherService {
             Number(day),
             Number(hour),
             Number(minutes),
-            UKRAINE_TZ_OFFSET_MINUTES,
+            getUkraineUtcOffsetMinutes(),
           );
           const to = new Date(from.getTime() + VOE_CELL_DURATION_MS);
 

@@ -1,2 +1,1 @@
-export const UKRAINE_TZ_OFFSET_MINUTES = -120;
 export const VOE_CELL_DURATION_MS = 60 * 60 * 1000;

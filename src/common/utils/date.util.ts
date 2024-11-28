@@ -1,4 +1,5 @@
 import { VoeDisconnectionValueItem } from '../../disconnections/interfaces/disconnections-item.interface';
+import { getTimezoneOffset } from 'date-fns-tz';
 
 export const getDateWithTzOffset = (
   year: number,
@@ -40,4 +41,8 @@ export const mergeInterval = (
   }
 
   return mergedIntervals;
+};
+
+export const getUkraineUtcOffsetMinutes = (): number => {
+  return -getTimezoneOffset('Europe/Kyiv') / 60000;
 };
