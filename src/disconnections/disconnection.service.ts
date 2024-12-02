@@ -3,7 +3,6 @@ import { createEvents, EventAttributes } from 'ics';
 import { getDateArray } from '../common/utils/ical-types.util';
 import { DisconnectionsRepository } from './disconnections.repository';
 import querystring from 'querystring';
-import { mergeInterval } from '../common/utils/date.util';
 import { elapseTime } from '../common/utils/time.utils';
 
 export class DisconnectionService {
@@ -71,7 +70,7 @@ export class DisconnectionService {
           houseId.toString(),
           {
             ...v,
-            value: mergeInterval([...v.value, ...value]),
+            value,
           },
         );
         console.log(`Updated ${v.alias}, took ${elapse()}ms`);
