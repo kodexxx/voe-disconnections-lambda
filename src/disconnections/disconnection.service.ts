@@ -1,98 +1,84 @@
-import { VoeFetcherService } from '../voe-fetcher/voe-fetcher.service';
 import { createEvents, EventAttributes } from 'ics';
 import { getDateArray } from '../common/utils/ical-types.util';
 import { DisconnectionsRepository } from './disconnections.repository';
-import querystring from 'querystring';
-import { elapseTime } from '../common/utils/time.utils';
+import {
+  VoeDisconnectionEntity,
+  VoeDisconnectionValueItem,
+} from './interfaces/disconnections-item.interface';
+import { VoeFetcherService } from '../voe-fetcher/voe-fetcher.service';
 
 export class DisconnectionService {
   constructor(
-    private readonly voeFetcherService: VoeFetcherService,
     private readonly disconnectionsRepository: DisconnectionsRepository,
+    private readonly voeFetcherService: VoeFetcherService,
   ) {}
 
-  async getDisconnectionsWithCache(
+  async getDisconnectionsScheduleCalendar(
     cityId: string,
     streetId: string,
     houseId: string,
-    ignoreCache = false,
   ) {
-    if (!ignoreCache) {
-      const v = await this.disconnectionsRepository.findOne(
-        cityId,
-        streetId,
-        houseId,
-      );
-      if (v) {
-        return v.value;
-      }
-    }
-
-    const data = await this.voeFetcherService.getDisconnections(
+    const disconnections = await this.disconnectionsRepository.findOne(
       cityId,
       streetId,
       houseId,
     );
 
-    const existPrefetch = await this.disconnectionsRepository.findOne(
-      cityId,
-      streetId,
-      houseId,
-    );
-    if (!existPrefetch) {
-      await this.disconnectionsRepository.updateOne(cityId, streetId, houseId, {
-        alias: `Auto added #${Date.now()}`,
-        value: data,
-      });
-    }
-
-    return data;
+    return this.generateCalendar(disconnections?.value ?? []);
   }
 
-  async prefetchDisconnections() {
-    const items = await this.disconnectionsRepository.findMany();
+  getDisconnectionsSchedule(cityId: string, streetId: string, houseId: string) {
+    return this.disconnectionsRepository.findOne(cityId, streetId, houseId);
+  }
 
-    const promises = items.map(async (v) => {
-      const elapse = elapseTime();
-      try {
-        const { cityId, streetId, houseId } = querystring.parse(v.args);
-        console.log(`Start update ${v.alias}`);
-        const value = await this.getDisconnectionsWithCache(
-          cityId.toString(),
-          streetId.toString(),
-          houseId.toString(),
-          true,
-        );
+  getStoredDisconnections() {
+    return this.disconnectionsRepository.findMany();
+  }
 
-        await this.disconnectionsRepository.updateOne(
-          cityId.toString(),
-          streetId.toString(),
-          houseId.toString(),
-          {
-            ...v,
-            value,
-          },
-        );
-        console.log(`Updated ${v.alias}, took ${elapse()}ms`);
-      } catch (e) {
-        console.error(e);
-        console.log(`Update failed ${v.alias}, took ${elapse()}ms`);
-      }
+  updateDisconnection(
+    cityId: string,
+    streetId: string,
+    houseId: string,
+    update: Partial<VoeDisconnectionEntity>,
+  ) {
+    return this.disconnectionsRepository.updateOne(
+      cityId,
+      streetId,
+      houseId,
+      update,
+    );
+  }
+
+  async registerDisconnection(
+    cityId: string,
+    streetId: string,
+    houseId: string,
+    alias: string,
+  ) {
+    const exist = await this.getDisconnectionsSchedule(
+      cityId,
+      streetId,
+      houseId,
+    );
+    if (exist) {
+      return exist;
+    }
+
+    const updatedSchedule = await this.voeFetcherService.getDisconnections(
+      cityId.toString(),
+      streetId.toString(),
+      houseId.toString(),
+    );
+
+    await this.updateDisconnection(cityId, streetId, houseId, {
+      alias,
+      value: updatedSchedule,
     });
 
-    return Promise.allSettled(promises);
+    return this.getDisconnectionsSchedule(cityId, streetId, houseId);
   }
 
-  async getDisconnectionsCalendar(
-    cityId: string,
-    streetId: string,
-    houseId: string,
-  ) {
-    const disconnections = await this.getDisconnectionsWithCache(
-      cityId,
-      streetId,
-      houseId,
-    );
+  private generateCalendar(disconnections: VoeDisconnectionValueItem[]) {
     const events = disconnections.map((d) => {
       return {
         uid: `voe_disconnection_${d.to.getTime()}`,
