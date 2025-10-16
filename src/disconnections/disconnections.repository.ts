@@ -5,12 +5,12 @@ import {
   PutItemCommand,
   ScanCommand,
 } from '@aws-sdk/client-dynamodb';
-import querystring from 'querystring';
 import {
   VoeDisconnectionEntity,
   VoeDisconnectionValueItem,
 } from './interfaces/disconnections-item.interface';
 import { DisconnectionsOptionsInterface } from './interfaces/disconnections-options.interface';
+import { getSubscriptionArgs } from './utils/args.utils';
 
 export class DisconnectionsRepository {
   constructor(
@@ -27,7 +27,7 @@ export class DisconnectionsRepository {
       TableName: this.options.tableName,
       Key: {
         args: {
-          S: querystring.stringify({ cityId, streetId, houseId }),
+          S: getSubscriptionArgs(cityId, streetId, houseId),
         },
       },
     });
@@ -38,7 +38,7 @@ export class DisconnectionsRepository {
     }
   }
 
-  async findMany() {
+  async findMany(): Promise<VoeDisconnectionEntity[]> {
     const cmd = new ScanCommand({
       TableName: this.options.tableName,
     });
@@ -59,7 +59,7 @@ export class DisconnectionsRepository {
 
       Item: {
         args: {
-          S: querystring.stringify({ cityId, streetId, houseId }),
+          S: getSubscriptionArgs(cityId, streetId, houseId),
         },
         ...(update.alias && {
           alias: {

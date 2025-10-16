@@ -9,7 +9,7 @@ export class DisconnectionsController {
       return {
         statusCode: 200,
         body: JSON.stringify(
-          await this.disconnectionService.getDisconnectionsWithCache(
+          await this.disconnectionService.getDisconnectionsSchedule(
             payload.cityId,
             payload.streetId,
             payload.houseId,
@@ -24,7 +24,7 @@ export class DisconnectionsController {
     return {
       statusCode: 200,
       body: Buffer.from(
-        await this.disconnectionService.getDisconnectionsCalendar(
+        await this.disconnectionService.getDisconnectionsScheduleCalendar(
           payload.cityId,
           payload.streetId,
           payload.houseId,
@@ -36,9 +36,5 @@ export class DisconnectionsController {
         'content-disposition': 'attachment; filename="disconnections.ics',
       },
     };
-  }
-
-  prefetch() {
-    return this.disconnectionService.prefetchDisconnections();
   }
 }

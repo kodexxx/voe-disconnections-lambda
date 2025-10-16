@@ -1,21 +1,21 @@
 import { DisconnectionService } from './disconnection.service';
-import { getVoeFetcherModule } from '../voe-fetcher/voe-fetcher.module';
 import { DisconnectionsRepository } from './disconnections.repository';
 import { DisconnectionsController } from './disconnections.controller';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { Config } from '../config';
+import { getVoeFetcherModule } from '../voe-fetcher/voe-fetcher.module';
 
 export const getDisconnectionsModule = () => {
   const voeFetcherModule = getVoeFetcherModule();
-
   const disconnectionsRepository = new DisconnectionsRepository(
     new DynamoDBClient(),
     {
-      tableName: 'voe-disconnection',
+      tableName: Config.DYNAMODB_TABLE,
     },
   );
   const disconnectionService = new DisconnectionService(
-    voeFetcherModule.voeFetcherService,
     disconnectionsRepository,
+    voeFetcherModule.voeFetcherService,
   );
 
   const disconnectionsController = new DisconnectionsController(

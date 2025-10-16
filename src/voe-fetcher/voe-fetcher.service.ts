@@ -26,6 +26,98 @@ export class VoeFetcherService {
     return this.parse(data);
   }
 
+  async getCityByName(
+    cityName: string,
+  ): Promise<{ id: string; name: string }[]> {
+    const params = querystring.stringify({
+      q: cityName,
+    });
+    console.log(
+      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_city?${params}`,
+    );
+    const result = await fetch(
+      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_city?${params}`,
+      {
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        method: 'GET',
+      },
+    );
+    const data = await result.json();
+    return (
+      data?.map((item) => {
+        const root = HTMLParse(item.label);
+        const id = root.querySelector('div').attributes['data-id'];
+        return {
+          name: item.value,
+          id,
+        };
+      }) ?? []
+    );
+  }
+
+  async getStreetByName(
+    cityId: string,
+    streetName: string,
+  ): Promise<{ id: string; name: string }[]> {
+    const params = querystring.stringify({
+      q: streetName,
+    });
+    console.log(
+      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_street/${cityId}?${params}`,
+    );
+    const result = await fetch(
+      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_street/${cityId}?${params}`,
+      {
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        method: 'GET',
+      },
+    );
+    const data = await result.json();
+    return (
+      data?.map((item) => {
+        const root = HTMLParse(item.label);
+        const id = root.querySelector('div').attributes['data-id'];
+        return {
+          name: item.value,
+          id,
+        };
+      }) ?? []
+    );
+  }
+
+  async getHouseByName(streetId: string, houseName: string) {
+    const params = querystring.stringify({
+      q: houseName,
+    });
+    console.log(
+      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_house/${streetId}?${params}`,
+    );
+    const result = await fetch(
+      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_house/${streetId}?${params}`,
+      {
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        method: 'GET',
+      },
+    );
+    const data = await result.json();
+    return (
+      data?.map((item) => {
+        const root = HTMLParse(item.label);
+        const id = root.querySelector('div').attributes['data-id'];
+        return {
+          name: item.value,
+          id,
+        };
+      }) ?? []
+    );
+  }
+
   private async parse(page: string): Promise<VoeDisconnectionValueItem[]> {
     const root = HTMLParse(page);
     const table = root.querySelector('div.table_wrapper');

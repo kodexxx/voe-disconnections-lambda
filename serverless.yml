@@ -1,0 +1,95 @@
+service: disconnection-service
+
+plugins:
+  - serverless-offline
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+#  timeout: 999
+  environment:
+    DYNAMODB_TABLE: ${self:custom.dynamoTable}
+    TELEGRAM_USERS_TABLE: ${self:custom.telegramUsersTable}
+    GRAMMY_STATE_TABLE: ${self:custom.grammyStateTable}
+    TELEGRAM_BOT_TOKEN: ${self:custom.botToken.BOT_TOKEN}
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:*"
+      Resource:
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.dynamoTable}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.telegramUsersTable}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.grammyStateTable}"
+
+custom:
+  dynamoTable: my-disconnection-table
+  telegramUsersTable: bot-users
+  grammyStateTable: grammy-state-storage
+  botToken: ${ssm:/aws/reference/secretsmanager/telegram}
+
+functions:
+  prefetch:
+    handler: src/functions.prefetch
+    events:
+#      - http:
+#          path: prefetch-local
+#          method: get
+      - eventBridge:
+          schedule: cron(0/10 * * * ? *)
+          enabled: true
+
+  disconnectionCalendar:
+    handler: src/functions.disconnectionCalendar
+    events:
+      - http:
+          path: disconnection-calendar
+          method: get
+
+  botWebhookHandler:
+    handler: src/functions.botWebhookHandler
+    timeout: 180
+    events:
+      - http:
+          path: tg-webhook-handler
+          method: post
+
+  broadcastMessage:
+    handler: src/functions.broadcastMessage
+    timeout: 180
+
+resources:
+  Resources:
+    DynamoDbTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        TableName: ${self:custom.dynamoTable}
+        AttributeDefinitions:
+          - AttributeName: "args"
+            AttributeType: "S"
+        KeySchema:
+          - AttributeName: "args"
+            KeyType: "HASH"
+        BillingMode: PAY_PER_REQUEST
+    TelegramUserTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        TableName: ${self:custom.telegramUsersTable}
+        AttributeDefinitions:
+          - AttributeName: "userId"
+            AttributeType: "N"
+        KeySchema:
+          - AttributeName: "userId"
+            KeyType: "HASH"
+        BillingMode: PAY_PER_REQUEST
+    GrammyStateStorage:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        TableName: ${self:custom.grammyStateTable}
+        AttributeDefinitions:
+          - AttributeName: "key"
+            AttributeType: "S"
+        KeySchema:
+          - AttributeName: "key"
+            KeyType: "HASH"
+        BillingMode: PAY_PER_REQUEST

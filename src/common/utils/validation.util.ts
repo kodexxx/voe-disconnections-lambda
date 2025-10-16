@@ -8,6 +8,9 @@ export const getPayload = async <D extends object>(
   if (!payloadCls) {
     return data;
   }
+  if (!data) {
+    throw new Error('Incorrect payload');
+  }
   const obj = plainToInstance(payloadCls, data);
   try {
     await validateOrReject(obj, {

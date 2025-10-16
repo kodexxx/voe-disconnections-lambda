@@ -16,14 +16,10 @@ export async function disconnectionCalendar(event: APIGatewayEvent) {
     console.error(e);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: e }),
+      body: JSON.stringify({ error: e?.message ?? e }),
       headers: {
         'content-Type': 'application/json',
       },
     };
   }
-}
-
-export function prefetch() {
-  return getDisconnectionsModule().disconnectionsController.prefetch();
 }
