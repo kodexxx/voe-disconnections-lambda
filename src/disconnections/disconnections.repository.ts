@@ -85,7 +85,7 @@ export class DisconnectionsRepository {
     return {
       args: item.args.S,
       alias: item.alias.S,
-      lastUpdatedAt: item.args.S,
+      lastUpdatedAt: item.lastUpdatedAt?.S,
       value: value.map((v) => ({
         ...v,
         from: new Date(v.from),

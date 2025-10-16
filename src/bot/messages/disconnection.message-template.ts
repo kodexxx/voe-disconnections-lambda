@@ -45,6 +45,7 @@ export function disconnectionMessageTemplate(
   if (lastUpdatedAt) {
     try {
       const lastUpdateDate = new Date(lastUpdatedAt);
+
       // Перевірка чи дата валідна
       if (!isNaN(lastUpdateDate.getTime())) {
         const zonedUpdateTime = toZonedTime(lastUpdateDate, timeZone);
