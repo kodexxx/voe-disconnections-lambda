@@ -43,14 +43,22 @@ export function disconnectionMessageTemplate(
   // Форматування часу останнього оновлення
   let updateTimeText = '';
   if (lastUpdatedAt) {
-    const lastUpdateDate = new Date(lastUpdatedAt);
-    const zonedUpdateTime = toZonedTime(lastUpdateDate, timeZone);
-    const formattedUpdateTime = format(
-      zonedUpdateTime,
-      "d MMMM 'о' HH:mm",
-      { locale: uk },
-    );
-    updateTimeText = `\n🕐 ${tgFormat.italic(`Оновлено: ${formattedUpdateTime}`)}`;
+    try {
+      const lastUpdateDate = new Date(lastUpdatedAt);
+      // Перевірка чи дата валідна
+      if (!isNaN(lastUpdateDate.getTime())) {
+        const zonedUpdateTime = toZonedTime(lastUpdateDate, timeZone);
+        const formattedUpdateTime = format(
+          zonedUpdateTime,
+          "d MMMM 'о' HH:mm",
+          { locale: uk },
+        );
+        updateTimeText = `\n🕐 ${tgFormat.italic(`Оновлено: ${formattedUpdateTime}`)}`;
+      }
+    } catch (error) {
+      console.error('Error formatting lastUpdatedAt:', error);
+      // Якщо помилка - просто не показуємо час оновлення
+    }
   }
 
   if (!items.length) {

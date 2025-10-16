@@ -73,6 +73,7 @@ export class DisconnectionService {
     await this.updateDisconnection(cityId, streetId, houseId, {
       alias,
       value: updatedSchedule,
+      lastUpdatedAt: new Date().toISOString(),
     });
 
     return this.getDisconnectionsSchedule(cityId, streetId, houseId);
