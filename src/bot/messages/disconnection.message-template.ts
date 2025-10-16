@@ -63,8 +63,8 @@ export function disconnectionMessageTemplate(
   }
 
   if (!items.length) {
-    return `*${tgEscape('Відключення відсутні 💡!')}*\n\n📍 ${tgFormat.bold(tgEscape(alias))}${updateTimeText}`;
+    return `*${tgEscape('Відключення відсутні 💡!')}*\n\n📍 ${tgFormat.bold(alias)}${updateTimeText}`;
   }
 
-  return `🔔 *${tgEscape('Графік відключень')}*\n\n📍 ${tgFormat.bold(tgEscape(alias))}\n\n${items.join('\n\n\n')}${updateTimeText}`;
+  return `🔔 *${tgEscape('Графік відключень')}*\n\n📍 ${tgFormat.bold(alias)}\n\n${items.join('\n\n\n')}${updateTimeText}`;
 }
