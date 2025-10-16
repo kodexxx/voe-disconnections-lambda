@@ -54,7 +54,7 @@ export function disconnectionMessageTemplate(
           "d MMMM 'о' HH:mm",
           { locale: uk },
         );
-        updateTimeText = `\n🕐 ${tgFormat.italic(`Оновлено: ${formattedUpdateTime}`)}`;
+        updateTimeText = `\n${tgFormat.italic(`🕐 Оновлено: ${formattedUpdateTime}`)}`;
       }
     } catch (error) {
       console.error('Error formatting lastUpdatedAt:', error);
