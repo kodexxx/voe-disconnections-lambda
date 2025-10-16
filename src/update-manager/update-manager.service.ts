@@ -26,20 +26,24 @@ export class UpdateManagerService {
           houseId.toString(),
         );
 
+        const updatedEntity = {
+          ...schedule,
+          value: updatedSchedule,
+          lastUpdatedAt: new Date().toISOString(),
+        };
+
         await this.notify(
           schedule.args,
           schedule.value,
           updatedSchedule,
           schedule.alias,
+          updatedEntity.lastUpdatedAt,
         );
         await this.disconnectionService.updateDisconnection(
           cityId.toString(),
           streetId.toString(),
           houseId.toString(),
-          {
-            ...schedule,
-            value: updatedSchedule,
-          },
+          updatedEntity,
         );
         console.log(`Updated ${schedule.alias}, took ${elapse()}ms`);
       } catch (e) {
@@ -56,10 +60,11 @@ export class UpdateManagerService {
     oldData: VoeDisconnectionValueItem[],
     newData: VoeDisconnectionValueItem[],
     alias: string,
+    lastUpdatedAt?: string,
   ) {
     if (JSON.stringify(oldData) === JSON.stringify(newData)) {
       return;
     }
-    await this.botService.notifyWithUpdate(args, newData, alias);
+    await this.botService.notifyWithUpdate(args, newData, alias, lastUpdatedAt);
   }
 }

@@ -7,9 +7,11 @@ import { tgEscape, tgFormat } from '../utils/bot.utils';
 export function disconnectionMessageTemplate(
   data: VoeDisconnectionValueItem[],
   alias: string,
+  lastUpdatedAt?: string,
 ) {
+  const timeZone = 'Europe/Kyiv';
+
   const formated = data.reduce((accum, item) => {
-    const timeZone = 'Europe/Kyiv';
     const zonedFrom = toZonedTime(item.from, timeZone);
     const zonedTo = toZonedTime(item.to, timeZone);
 
@@ -38,8 +40,22 @@ export function disconnectionMessageTemplate(
       .join('\n');
     return [title, items].join('\n');
   });
-  if (!items.length) {
-    return `*${tgEscape('Відключення відсутні 💡!')}*`;
+  // Форматування часу останнього оновлення
+  let updateTimeText = '';
+  if (lastUpdatedAt) {
+    const lastUpdateDate = new Date(lastUpdatedAt);
+    const zonedUpdateTime = toZonedTime(lastUpdateDate, timeZone);
+    const formattedUpdateTime = format(
+      zonedUpdateTime,
+      "d MMMM 'о' HH:mm",
+      { locale: uk },
+    );
+    updateTimeText = `\n🕐 ${tgFormat.italic(`Оновлено: ${formattedUpdateTime}`)}`;
   }
-  return `🔔 *${tgEscape('Оновлення графіка відключень!')}*\n${items.join('\n\n\n')}\n\n${tgFormat.italic(alias)}`;
+
+  if (!items.length) {
+    return `*${tgEscape('Відключення відсутні 💡!')}*\n\n📍 ${tgFormat.bold(tgEscape(alias))}${updateTimeText}`;
+  }
+
+  return `🔔 *${tgEscape('Графік відключень')}*\n\n📍 ${tgFormat.bold(tgEscape(alias))}\n\n${items.join('\n\n\n')}${updateTimeText}`;
 }

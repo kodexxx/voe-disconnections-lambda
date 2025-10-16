@@ -102,9 +102,16 @@ export class BotService {
           parse_mode: 'Markdown',
         });
       }
-      await ctx.reply(disconnectionMessageTemplate(data.value, data.alias), {
-        parse_mode: 'MarkdownV2',
-      });
+      await ctx.reply(
+        disconnectionMessageTemplate(
+          data.value,
+          data.alias,
+          data.lastUpdatedAt,
+        ),
+        {
+          parse_mode: 'MarkdownV2',
+        },
+      );
     });
     this.bot.hears(BOT_MESSAGES.BUTTONS.SETTINGS, (ctx) =>
       ctx.conversation.enter('demo'),
@@ -161,6 +168,7 @@ export class BotService {
     args: string,
     data: VoeDisconnectionValueItem[],
     alias: string,
+    lastUpdatedAt?: string,
   ) {
     const usersToNotify =
       await this.botRepository.getUsersWithSubscription(args);
@@ -169,7 +177,7 @@ export class BotService {
       try {
         await this.bot.api.sendMessage(
           u.userId,
-          disconnectionMessageTemplate(data, alias),
+          disconnectionMessageTemplate(data, alias, lastUpdatedAt),
           { parse_mode: 'MarkdownV2' },
         );
       } catch (e) {
@@ -394,6 +402,7 @@ export class BotService {
       disconnectionMessageTemplate(
         registeredDisconnection.value,
         registeredDisconnection.alias,
+        registeredDisconnection.lastUpdatedAt,
       ),
       {
         parse_mode: 'MarkdownV2',
