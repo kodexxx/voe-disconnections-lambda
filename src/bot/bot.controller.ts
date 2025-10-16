@@ -7,4 +7,8 @@ export class BotController {
   handleWebhook(event: APIGatewayEvent, context: Context) {
     return this.botService.handleWebhook(event, context);
   }
+
+  handleBroadcast(event: any) {
+    return this.botService.handleBroadcast(event);
+  }
 }

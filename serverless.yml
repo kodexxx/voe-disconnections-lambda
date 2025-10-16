@@ -54,6 +54,10 @@ functions:
           path: tg-webhook-handler
           method: post
 
+  broadcastMessage:
+    handler: src/functions.broadcastMessage
+    timeout: 180
+
 resources:
   Resources:
     DynamoDbTable:

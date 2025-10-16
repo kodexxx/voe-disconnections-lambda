@@ -7,3 +7,7 @@ export async function botWebhookHandler(
 ) {
   return getBotModule().botController.handleWebhook(event, context);
 }
+
+export async function broadcastMessage(event: any) {
+  return getBotModule().botController.handleBroadcast(event);
+}

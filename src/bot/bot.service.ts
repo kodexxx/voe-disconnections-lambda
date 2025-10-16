@@ -1,4 +1,10 @@
-import {Bot, session, webhookCallback, Context as GRContext, Keyboard} from 'grammy';
+import {
+  Bot,
+  session,
+  webhookCallback,
+  Context as GRContext,
+  Keyboard,
+} from 'grammy';
 import { APIGatewayEvent } from 'aws-lambda';
 import { Context } from 'aws-lambda';
 import { BotRepository } from './bot.repository';
@@ -14,30 +20,32 @@ import {
 import { VoeFetcherService } from '../voe-fetcher/voe-fetcher.service';
 import { getSubscriptionArgs } from '../disconnections/utils/args.utils';
 import { DisconnectionService } from '../disconnections/disconnection.service';
-import {Menu} from "@grammyjs/menu";
-import querystring from "querystring";
+import { Menu } from '@grammyjs/menu';
+import querystring from 'querystring';
 
 type MyContext = GRContext & ConversationFlavor;
 type MyConversation = Conversation<MyContext>;
 
-const mainMenu = new Menu("main-menu")
-    .submenu("Налаштування", 'settings-menu').row()
-    .text("Поточний розклад", (ctx) => ctx.reply("You pressed B!"));
-
+const mainMenu = new Menu('main-menu')
+  .submenu('Налаштування', 'settings-menu')
+  .row()
+  .text('Поточний розклад', (ctx) => ctx.reply('You pressed B!'));
 
 const settingsMenu = new Menu('settings-menu')
-    .text('Встановити підписку', (ctx) => ctx.reply('Встановити підписику')).row()
-    .back('Назад');
+  .text('Встановити підписку', (ctx) => ctx.reply('Встановити підписику'))
+  .row()
+  .back('Назад');
 
 const SETTINGS_BUTTON = '🛠️ Налаштування';
 const SCHEDULE_BUTTON = '🗓️ Поточний розклад';
 
 const keyboard = new Keyboard()
-    .text(SETTINGS_BUTTON).row()
-    .text(SCHEDULE_BUTTON).row()
-    .resized()
-    .persistent();
-
+  .text(SETTINGS_BUTTON)
+  .row()
+  .text(SCHEDULE_BUTTON)
+  .row()
+  .resized()
+  .persistent();
 
 mainMenu.register(settingsMenu);
 
@@ -59,7 +67,7 @@ export class BotService {
     );
     this.bot.use(conversations());
     this.bot.use(createConversation(this.demoConversation.bind(this), 'demo'));
-    this.bot.use(mainMenu)
+    this.bot.use(mainMenu);
 
     this.bot.use(async (ctx, next) => {
       console.log('start update user');
@@ -74,7 +82,7 @@ export class BotService {
       console.log('command start');
       if (!ctx.match) {
         return ctx.reply(
-          'Розробка боту в процесі! Бот вже тестується і буде запущений найближим часом!',
+          'Команда не підтримується! Маєш питання?\n\nПриєднуйтесь до нашого чату: https://t.me/+bZmDtaSKcEZhYzUy',
           {
             reply_markup: keyboard,
           },
@@ -85,28 +93,32 @@ export class BotService {
     this.bot.hears(SCHEDULE_BUTTON, async (ctx) => {
       const user = await this.botRepository.getUser(ctx.from.id);
       if (!user.subscriptionArgs) {
-        return ctx.reply('У вас немає активної підписки, встановіть адресу спочатку у налаштуваннях!');
+        return ctx.reply(
+          'У вас немає активної підписки, встановіть адресу спочатку у налаштуваннях!',
+        );
       }
-      const { cityId, streetId, houseId } = querystring.parse(user.subscriptionArgs);
-      const data = await this.disconnectionService.getDisconnectionsSchedule(cityId.toString(), streetId.toString(), houseId.toString());
-      if (!data) {
-        return ctx.reply('На разі розклад ще не софрмований, спробуйте пізніше!');
-      }
-      await ctx.reply(
-          disconnectionMessageTemplate(
-              data.value,
-              data.alias,
-          ),
-          {
-            parse_mode: 'MarkdownV2',
-          },
+      const { cityId, streetId, houseId } = querystring.parse(
+        user.subscriptionArgs,
       );
+      const data = await this.disconnectionService.getDisconnectionsSchedule(
+        cityId.toString(),
+        streetId.toString(),
+        houseId.toString(),
+      );
+      if (!data) {
+        return ctx.reply(
+          'На разі розклад ще не софрмований, спробуйте пізніше!',
+        );
+      }
+      await ctx.reply(disconnectionMessageTemplate(data.value, data.alias), {
+        parse_mode: 'MarkdownV2',
+      });
     });
-    this.bot.hears(SETTINGS_BUTTON, (ctx) => ctx.conversation.enter('demo'))
+    this.bot.hears(SETTINGS_BUTTON, (ctx) => ctx.conversation.enter('demo'));
 
     this.bot.on('message', async (ctx) => {
       return ctx.reply(
-        'Розробка боту в процесі! Бот вже тестується і буде запущений найближим часом!',
+        'Команда не підтримується! Маєш питання?\n\nПриєднуйтесь до нашого чату: https://t.me/+bZmDtaSKcEZhYzUy',
         {
           reply_markup: keyboard,
         },
@@ -117,6 +129,41 @@ export class BotService {
   async handleWebhook(event: APIGatewayEvent, context: Context) {
     const cb = webhookCallback(this.bot, 'aws-lambda-async');
     return cb(event, context);
+  }
+
+  async handleBroadcast(event: any) {
+    try {
+      // Підтримка як API Gateway формату, так і прямого виклику
+      const data = event.body ? JSON.parse(event.body) : event;
+      const { message, parseMode = 'Markdown' } = data;
+
+      if (!message) {
+        return {
+          success: false,
+          error: 'Message is required',
+          usage: {
+            message: 'Your broadcast message here',
+            parseMode:
+              'Markdown | MarkdownV2 | HTML (optional, default: Markdown)',
+          },
+        };
+      }
+
+      const result = await this.broadcastMessage(message, parseMode);
+
+      return {
+        success: true,
+        message: 'Broadcast completed',
+        statistics: result,
+      };
+    } catch (error) {
+      console.error('Broadcast error:', error);
+      return {
+        success: false,
+        error: 'Failed to send broadcast',
+        details: error.message,
+      };
+    }
   }
 
   async notifyWithUpdate(
@@ -142,14 +189,58 @@ export class BotService {
     return await Promise.all(promises);
   }
 
+  async broadcastMessage(
+    message: string,
+    parseMode: 'Markdown' | 'MarkdownV2' | 'HTML' = 'Markdown',
+  ) {
+    const allUsers = await this.botRepository.getAllUsers();
+
+    let successCount = 0;
+    let failedCount = 0;
+    const failedUsers = [];
+
+    const promises = allUsers.map(async (user) => {
+      try {
+        await this.bot.api.sendMessage(user.userId, message, {
+          parse_mode: parseMode,
+        });
+        successCount++;
+      } catch (e) {
+        failedCount++;
+        failedUsers.push(user.userId);
+
+        // Log the error for debugging purposes
+        if (e.error_code === 403) {
+          console.log(`User ${user.userId} has blocked the bot`);
+        } else if (e.error_code === 400) {
+          console.error(
+            `Invalid message format for user ${user.userId}:`,
+            e.description,
+          );
+        } else {
+          console.error(`Failed to send message to user ${user.userId}:`, e);
+        }
+      }
+    });
+
+    await Promise.all(promises);
+
+    return {
+      success: successCount,
+      failed: failedCount,
+      failedUsers,
+      total: allUsers.length,
+    };
+  }
+
   async demoConversation(conversation: MyConversation, ctx: MyContext) {
     await ctx.reply(
       'Для того щоб встановити підписку потрібно по черзі заповнити, місто, вулицю, та будинок, обираючи при цьому знайдений ваш варіант.',
-        {
-          reply_markup: {
-            remove_keyboard: true,
-          }
-        }
+      {
+        reply_markup: {
+          remove_keyboard: true,
+        },
+      },
     );
     await ctx.reply('Введіть місто');
     const city = await conversation.form.text();
@@ -249,9 +340,12 @@ export class BotService {
       },
     );
 
-    await ctx.reply(`Підписка оновлена! Тепер ви будете отримувати сповіщення`, {
-      reply_markup: keyboard
-    });
+    await ctx.reply(
+      `Підписка оновлена! Тепер ви будете отримувати сповіщення`,
+      {
+        reply_markup: keyboard,
+      },
+    );
 
     return;
   }
