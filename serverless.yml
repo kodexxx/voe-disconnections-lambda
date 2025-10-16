@@ -48,7 +48,7 @@ functions:
 
   botWebhookHandler:
     handler: src/functions.botWebhookHandler
-    timeout: 180
+    # timeout: 180
     events:
       - http:
           path: tg-webhook-handler
@@ -56,7 +56,7 @@ functions:
 
   broadcastMessage:
     handler: src/functions.broadcastMessage
-    timeout: 180
+    # timeout: 180
 
 resources:
   Resources:

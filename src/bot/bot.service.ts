@@ -1,10 +1,4 @@
-import {
-  Bot,
-  session,
-  webhookCallback,
-  Context as GRContext,
-  Keyboard,
-} from 'grammy';
+import { Bot, session, webhookCallback, Keyboard } from 'grammy';
 import { APIGatewayEvent } from 'aws-lambda';
 import { Context } from 'aws-lambda';
 import { BotRepository } from './bot.repository';
@@ -12,37 +6,35 @@ import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconne
 import { disconnectionMessageTemplate } from './messages/disconnection.message-template';
 import { DynamodbStorageAdapter } from './adapters/dynamodb-storage.adapter';
 import {
-  Conversation,
-  ConversationFlavor,
   conversations,
   createConversation,
+  ConversationFlavor,
 } from '@grammyjs/conversations';
 import { VoeFetcherService } from '../voe-fetcher/voe-fetcher.service';
 import { getSubscriptionArgs } from '../disconnections/utils/args.utils';
 import { DisconnectionService } from '../disconnections/disconnection.service';
 import { Menu } from '@grammyjs/menu';
 import querystring from 'querystring';
-
-type MyContext = GRContext & ConversationFlavor;
-type MyConversation = Conversation<MyContext>;
+import { MyContext, MyConversation } from './types/conversation.types';
+import { VoeLocationItem } from '../voe-fetcher/interfaces/voe-location-item.interface';
+import { BOT_MESSAGES } from './constants/messages.constants';
 
 const mainMenu = new Menu('main-menu')
-  .submenu('Налаштування', 'settings-menu')
+  .submenu(BOT_MESSAGES.MENU.SETTINGS, 'settings-menu')
   .row()
-  .text('Поточний розклад', (ctx) => ctx.reply('You pressed B!'));
+  .text(BOT_MESSAGES.BUTTONS.SCHEDULE, (ctx) => ctx.reply('You pressed B!'));
 
 const settingsMenu = new Menu('settings-menu')
-  .text('Встановити підписку', (ctx) => ctx.reply('Встановити підписику'))
+  .text(BOT_MESSAGES.MENU.SET_SUBSCRIPTION, (ctx) =>
+    ctx.reply(BOT_MESSAGES.MENU.SET_SUBSCRIPTION),
+  )
   .row()
-  .back('Назад');
-
-const SETTINGS_BUTTON = '🛠️ Налаштування';
-const SCHEDULE_BUTTON = '🗓️ Поточний розклад';
+  .back(BOT_MESSAGES.MENU.BACK);
 
 const keyboard = new Keyboard()
-  .text(SETTINGS_BUTTON)
+  .text(BOT_MESSAGES.BUTTONS.SETTINGS)
   .row()
-  .text(SCHEDULE_BUTTON)
+  .text(BOT_MESSAGES.BUTTONS.SCHEDULE)
   .row()
   .resized()
   .persistent();
@@ -81,21 +73,21 @@ export class BotService {
     this.bot.command('start', async (ctx) => {
       console.log('command start');
       if (!ctx.match) {
-        return ctx.reply(
-          'Команда не підтримується! Маєш питання?\n\nПриєднуйтесь до нашого чату: https://t.me/+bZmDtaSKcEZhYzUy',
-          {
-            reply_markup: keyboard,
-          },
-        );
+        return ctx.reply(BOT_MESSAGES.START.WELCOME, {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard,
+        });
       }
-      return ctx.reply('Підписка додана!');
+      return ctx.reply(BOT_MESSAGES.START.SUBSCRIPTION_ADDED, {
+        parse_mode: 'Markdown',
+      });
     });
-    this.bot.hears(SCHEDULE_BUTTON, async (ctx) => {
+    this.bot.hears(BOT_MESSAGES.BUTTONS.SCHEDULE, async (ctx) => {
       const user = await this.botRepository.getUser(ctx.from.id);
       if (!user.subscriptionArgs) {
-        return ctx.reply(
-          'У вас немає активної підписки, встановіть адресу спочатку у налаштуваннях!',
-        );
+        return ctx.reply(BOT_MESSAGES.SUBSCRIPTION.NO_ACTIVE, {
+          parse_mode: 'Markdown',
+        });
       }
       const { cityId, streetId, houseId } = querystring.parse(
         user.subscriptionArgs,
@@ -106,23 +98,23 @@ export class BotService {
         houseId.toString(),
       );
       if (!data) {
-        return ctx.reply(
-          'На разі розклад ще не софрмований, спробуйте пізніше!',
-        );
+        return ctx.reply(BOT_MESSAGES.SCHEDULE.NOT_FORMED, {
+          parse_mode: 'Markdown',
+        });
       }
       await ctx.reply(disconnectionMessageTemplate(data.value, data.alias), {
         parse_mode: 'MarkdownV2',
       });
     });
-    this.bot.hears(SETTINGS_BUTTON, (ctx) => ctx.conversation.enter('demo'));
+    this.bot.hears(BOT_MESSAGES.BUTTONS.SETTINGS, (ctx) =>
+      ctx.conversation.enter('demo'),
+    );
 
     this.bot.on('message', async (ctx) => {
-      return ctx.reply(
-        'Команда не підтримується! Маєш питання?\n\nПриєднуйтесь до нашого чату: https://t.me/+bZmDtaSKcEZhYzUy',
-        {
-          reply_markup: keyboard,
-        },
-      );
+      return ctx.reply(BOT_MESSAGES.START.WELCOME, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
     });
   }
 
@@ -140,11 +132,10 @@ export class BotService {
       if (!message) {
         return {
           success: false,
-          error: 'Message is required',
+          error: BOT_MESSAGES.BROADCAST.MESSAGE_REQUIRED,
           usage: {
-            message: 'Your broadcast message here',
-            parseMode:
-              'Markdown | MarkdownV2 | HTML (optional, default: Markdown)',
+            message: BOT_MESSAGES.BROADCAST.USAGE_MESSAGE,
+            parseMode: BOT_MESSAGES.BROADCAST.USAGE_PARSE_MODE,
           },
         };
       }
@@ -153,14 +144,14 @@ export class BotService {
 
       return {
         success: true,
-        message: 'Broadcast completed',
+        message: BOT_MESSAGES.BROADCAST.COMPLETED,
         statistics: result,
       };
     } catch (error) {
       console.error('Broadcast error:', error);
       return {
         success: false,
-        error: 'Failed to send broadcast',
+        error: BOT_MESSAGES.BROADCAST.ERROR,
         details: error.message,
       };
     }
@@ -233,84 +224,153 @@ export class BotService {
     };
   }
 
-  async demoConversation(conversation: MyConversation, ctx: MyContext) {
-    await ctx.reply(
-      'Для того щоб встановити підписку потрібно по черзі заповнити, місто, вулицю, та будинок, обираючи при цьому знайдений ваш варіант.',
+  private async waitForTextWithCancel(
+    conversation: MyConversation,
+    ctx: MyContext,
+  ): Promise<string | null> {
+    const response = await conversation.wait();
+
+    if (response.message?.text === '/cancel') {
+      await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CANCELLED, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
+      return null;
+    }
+
+    return response.message?.text;
+  }
+
+  private async waitForSelectionWithCancel(
+    conversation: MyConversation,
+    ctx: MyContext,
+    items: VoeLocationItem[],
+    callbackPrefix: string,
+    message: string,
+  ): Promise<VoeLocationItem | null> {
+    const buttons = items.slice(0, 8).map((item, index) => [
       {
-        reply_markup: {
-          remove_keyboard: true,
-        },
+        text: item.name,
+        callback_data: `${callbackPrefix}=${index}`,
       },
+    ]);
+    buttons.push([
+      {
+        text: BOT_MESSAGES.BUTTONS.CANCEL,
+        callback_data: 'cancel',
+      },
+    ]);
+
+    await ctx.reply(message, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: buttons,
+      },
+    });
+
+    const callback = await conversation.waitForCallbackQuery(
+      new RegExp(`${callbackPrefix}=(.*)|(cancel)`),
     );
-    await ctx.reply('Введіть місто');
-    const city = await conversation.form.text();
+
+    if (callback.match[0] === 'cancel') {
+      await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CANCELLED, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
+      return null;
+    }
+
+    return items[callback.match[1]];
+  }
+
+  async demoConversation(conversation: MyConversation, ctx: MyContext) {
+    await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.SETUP_INTRO, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        remove_keyboard: true,
+      },
+    });
+
+    // Крок 1: Введення та вибір міста
+    await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.ENTER_CITY, {
+      parse_mode: 'Markdown',
+    });
+    const city = await this.waitForTextWithCancel(conversation, ctx);
+    if (!city) return;
+
     const cityData = await conversation.external(() =>
       this.voeFetcherService.getCityByName(city),
     );
     if (!cityData?.length) {
-      await ctx.reply('Місто не знайдено, спробуйте спочатку!');
+      await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CITY_NOT_FOUND, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
       return;
     }
 
-    await ctx.reply('Знайдені міста', {
-      reply_markup: {
-        inline_keyboard: cityData.slice(0, 8).map((v, index) => [
-          {
-            text: v.name,
-            callback_data: `set_city=${index}`,
-          },
-        ]),
-      },
+    const selectedCity = await this.waitForSelectionWithCancel(
+      conversation,
+      ctx,
+      cityData,
+      'set_city',
+      BOT_MESSAGES.SUBSCRIPTION.CITIES_FOUND,
+    );
+    if (!selectedCity) return;
+
+    // Крок 2: Введення та вибір вулиці
+    await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.ENTER_STREET, {
+      parse_mode: 'Markdown',
     });
+    const street = await this.waitForTextWithCancel(conversation, ctx);
+    if (!street) return;
 
-    const cbCity = await conversation.waitForCallbackQuery(/set_city=(.*)/);
-    const selectedCity = cityData[cbCity.match[1]];
-
-    await ctx.reply('Введіть вулицю');
-    const street = await conversation.form.text();
     const streetData = await conversation.external(() =>
       this.voeFetcherService.getStreetByName(selectedCity.id, street),
     );
     if (!streetData?.length) {
-      await ctx.reply('Вулиць не знайдено!');
+      await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.STREETS_NOT_FOUND, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
       return;
     }
 
-    await ctx.reply('Знайдені вулиці', {
-      reply_markup: {
-        inline_keyboard: streetData.slice(0, 8).map((v, index) => [
-          {
-            text: v.name,
-            callback_data: `set_street=${index}`,
-          },
-        ]),
-      },
-    });
-    const cbStreet = await conversation.waitForCallbackQuery(/set_street=(.*)/);
-    const selectedStreet = streetData[cbStreet.match[1]];
+    const selectedStreet = await this.waitForSelectionWithCancel(
+      conversation,
+      ctx,
+      streetData,
+      'set_street',
+      BOT_MESSAGES.SUBSCRIPTION.STREETS_FOUND,
+    );
+    if (!selectedStreet) return;
 
-    await ctx.reply('Введіть будинок');
-    const house = await conversation.form.text();
+    // Крок 3: Введення та вибір будинку
+    await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.ENTER_HOUSE, {
+      parse_mode: 'Markdown',
+    });
+    const house = await this.waitForTextWithCancel(conversation, ctx);
+    if (!house) return;
+
     const houseData = await conversation.external(() =>
       this.voeFetcherService.getHouseByName(selectedStreet.id, house),
     );
     if (!houseData?.length) {
-      await ctx.reply('Будинків не знайдено!');
+      await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.HOUSES_NOT_FOUND, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
       return;
     }
 
-    await ctx.reply('Знайдені будинки', {
-      reply_markup: {
-        inline_keyboard: houseData.slice(0, 8).map((v, index) => [
-          {
-            text: v.name,
-            callback_data: `set_house=${index}`,
-          },
-        ]),
-      },
-    });
-    const cbHouse = await conversation.waitForCallbackQuery(/set_house=(.*)/);
-    const selectedHouse = houseData[cbHouse.match[1]];
+    const selectedHouse = await this.waitForSelectionWithCancel(
+      conversation,
+      ctx,
+      houseData,
+      'set_house',
+      BOT_MESSAGES.SUBSCRIPTION.HOUSES_FOUND,
+    );
+    if (!selectedHouse) return;
 
     await this.botRepository.upsertUser(ctx.from.id, {
       subscriptionArgs: getSubscriptionArgs(
@@ -340,12 +400,10 @@ export class BotService {
       },
     );
 
-    await ctx.reply(
-      `Підписка оновлена! Тепер ви будете отримувати сповіщення`,
-      {
-        reply_markup: keyboard,
-      },
-    );
+    await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.SUCCESS, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard,
+    });
 
     return;
   }
