@@ -280,6 +280,8 @@ export class BotService {
       new RegExp(`${callbackPrefix}=(.*)|(cancel)`),
     );
 
+    await callback.answerCallbackQuery();
+
     if (callback.match[0] === 'cancel') {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CANCELLED, {
         parse_mode: 'Markdown',
