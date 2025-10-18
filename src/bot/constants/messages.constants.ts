@@ -110,3 +110,20 @@ export const BOT_MESSAGES = {
       'Markdown | MarkdownV2 | HTML (optional, default: Markdown)',
   },
 };
+
+// Bot identifiers and IDs
+export const BOT_IDS = {
+  MENU: {
+    MAIN: 'main-menu',
+    SETTINGS: 'settings-menu',
+  },
+  CONVERSATION: {
+    SUBSCRIPTION_SETUP: 'subscription-setup',
+  },
+  CALLBACK: {
+    SET_CITY: 'set_city',
+    SET_STREET: 'set_street',
+    SET_HOUSE: 'set_house',
+    CANCEL: 'cancel',
+  },
+};

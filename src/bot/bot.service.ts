@@ -17,31 +17,13 @@ import { Menu } from '@grammyjs/menu';
 import querystring from 'querystring';
 import { MyContext, MyConversation } from './types/conversation.types';
 import { VoeLocationItem } from '../voe-fetcher/interfaces/voe-location-item.interface';
-import { BOT_MESSAGES } from './constants/messages.constants';
-
-const mainMenu = new Menu('main-menu')
-  .submenu(BOT_MESSAGES.MENU.SETTINGS, 'settings-menu')
-  .row()
-  .text(BOT_MESSAGES.BUTTONS.SCHEDULE, (ctx) => ctx.reply('You pressed B!'));
-
-const settingsMenu = new Menu('settings-menu')
-  .text(BOT_MESSAGES.MENU.SET_SUBSCRIPTION, (ctx) =>
-    ctx.reply(BOT_MESSAGES.MENU.SET_SUBSCRIPTION),
-  )
-  .row()
-  .back(BOT_MESSAGES.MENU.BACK);
-
-const keyboard = new Keyboard()
-  .text(BOT_MESSAGES.BUTTONS.SETTINGS)
-  .row()
-  .text(BOT_MESSAGES.BUTTONS.SCHEDULE)
-  .row()
-  .resized()
-  .persistent();
-
-mainMenu.register(settingsMenu);
+import { BOT_MESSAGES, BOT_IDS } from './constants/messages.constants';
 
 export class BotService {
+  private readonly mainMenu: Menu;
+  private readonly settingsMenu: Menu;
+  private readonly keyboard: Keyboard;
+
   constructor(
     private readonly bot: Bot<MyContext>,
     private readonly botRepository: BotRepository,
@@ -49,6 +31,32 @@ export class BotService {
     private readonly voeFetcherService: VoeFetcherService,
     private readonly disconnectionService: DisconnectionService,
   ) {
+    // Initialize menus and keyboard
+    this.settingsMenu = new Menu(BOT_IDS.MENU.SETTINGS)
+      .text(BOT_MESSAGES.MENU.SET_SUBSCRIPTION, (ctx) =>
+        ctx.reply(BOT_MESSAGES.MENU.SET_SUBSCRIPTION),
+      )
+      .row()
+      .back(BOT_MESSAGES.MENU.BACK);
+
+    this.mainMenu = new Menu(BOT_IDS.MENU.MAIN)
+      .submenu(BOT_MESSAGES.MENU.SETTINGS, BOT_IDS.MENU.SETTINGS)
+      .row()
+      .text(BOT_MESSAGES.BUTTONS.SCHEDULE, (ctx) =>
+        ctx.reply('You pressed B!'),
+      );
+
+    this.mainMenu.register(this.settingsMenu);
+
+    this.keyboard = new Keyboard()
+      .text(BOT_MESSAGES.BUTTONS.SETTINGS)
+      .row()
+      .text(BOT_MESSAGES.BUTTONS.SCHEDULE)
+      .row()
+      .resized()
+      .persistent();
+
+    // Setup bot middleware and handlers
     this.bot.use(
       session({
         storage: this.dynamodbStorageAdapter,
@@ -58,8 +66,13 @@ export class BotService {
       }),
     );
     this.bot.use(conversations());
-    this.bot.use(createConversation(this.demoConversation.bind(this), 'demo'));
-    this.bot.use(mainMenu);
+    this.bot.use(
+      createConversation(
+        this.subscriptionSetupConversation.bind(this),
+        BOT_IDS.CONVERSATION.SUBSCRIPTION_SETUP,
+      ),
+    );
+    this.bot.use(this.mainMenu);
 
     this.bot.use(async (ctx, next) => {
       console.log('start update user');
@@ -68,14 +81,14 @@ export class BotService {
       await next();
     });
     this.bot.command('kokos', async (ctx) => {
-      await ctx.conversation.enter('demo');
+      await ctx.conversation.enter(BOT_IDS.CONVERSATION.SUBSCRIPTION_SETUP);
     });
     this.bot.command('start', async (ctx) => {
       console.log('command start');
       if (!ctx.match) {
         return ctx.reply(BOT_MESSAGES.START.WELCOME, {
           parse_mode: 'Markdown',
-          reply_markup: keyboard,
+          reply_markup: this.keyboard,
         });
       }
       return ctx.reply(BOT_MESSAGES.START.SUBSCRIPTION_ADDED, {
@@ -114,13 +127,13 @@ export class BotService {
       );
     });
     this.bot.hears(BOT_MESSAGES.BUTTONS.SETTINGS, (ctx) =>
-      ctx.conversation.enter('demo'),
+      ctx.conversation.enter(BOT_IDS.CONVERSATION.SUBSCRIPTION_SETUP),
     );
 
     this.bot.on('message', async (ctx) => {
       return ctx.reply(BOT_MESSAGES.START.WELCOME, {
         parse_mode: 'Markdown',
-        reply_markup: keyboard,
+        reply_markup: this.keyboard,
       });
     });
   }
@@ -241,7 +254,7 @@ export class BotService {
     if (response.message?.text === '/cancel') {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CANCELLED, {
         parse_mode: 'Markdown',
-        reply_markup: keyboard,
+        reply_markup: this.keyboard,
       });
       return null;
     }
@@ -265,7 +278,7 @@ export class BotService {
     buttons.push([
       {
         text: BOT_MESSAGES.BUTTONS.CANCEL,
-        callback_data: 'cancel',
+        callback_data: BOT_IDS.CALLBACK.CANCEL,
       },
     ]);
 
@@ -277,15 +290,15 @@ export class BotService {
     });
 
     const callback = await conversation.waitForCallbackQuery(
-      new RegExp(`${callbackPrefix}=(.*)|(cancel)`),
+      new RegExp(`${callbackPrefix}=(.*)|(${BOT_IDS.CALLBACK.CANCEL})`),
     );
 
     await callback.answerCallbackQuery();
 
-    if (callback.match[0] === 'cancel') {
+    if (callback.match[0] === BOT_IDS.CALLBACK.CANCEL) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CANCELLED, {
         parse_mode: 'Markdown',
-        reply_markup: keyboard,
+        reply_markup: this.keyboard,
       });
       return null;
     }
@@ -293,7 +306,10 @@ export class BotService {
     return items[callback.match[1]];
   }
 
-  async demoConversation(conversation: MyConversation, ctx: MyContext) {
+  async subscriptionSetupConversation(
+    conversation: MyConversation,
+    ctx: MyContext,
+  ) {
     await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.SETUP_INTRO, {
       parse_mode: 'Markdown',
       reply_markup: {
@@ -314,7 +330,7 @@ export class BotService {
     if (!cityData?.length) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CITY_NOT_FOUND, {
         parse_mode: 'Markdown',
-        reply_markup: keyboard,
+        reply_markup: this.keyboard,
       });
       return;
     }
@@ -323,7 +339,7 @@ export class BotService {
       conversation,
       ctx,
       cityData,
-      'set_city',
+      BOT_IDS.CALLBACK.SET_CITY,
       BOT_MESSAGES.SUBSCRIPTION.CITIES_FOUND,
     );
     if (!selectedCity) return;
@@ -341,7 +357,7 @@ export class BotService {
     if (!streetData?.length) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.STREETS_NOT_FOUND, {
         parse_mode: 'Markdown',
-        reply_markup: keyboard,
+        reply_markup: this.keyboard,
       });
       return;
     }
@@ -350,7 +366,7 @@ export class BotService {
       conversation,
       ctx,
       streetData,
-      'set_street',
+      BOT_IDS.CALLBACK.SET_STREET,
       BOT_MESSAGES.SUBSCRIPTION.STREETS_FOUND,
     );
     if (!selectedStreet) return;
@@ -368,7 +384,7 @@ export class BotService {
     if (!houseData?.length) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.HOUSES_NOT_FOUND, {
         parse_mode: 'Markdown',
-        reply_markup: keyboard,
+        reply_markup: this.keyboard,
       });
       return;
     }
@@ -377,7 +393,7 @@ export class BotService {
       conversation,
       ctx,
       houseData,
-      'set_house',
+      BOT_IDS.CALLBACK.SET_HOUSE,
       BOT_MESSAGES.SUBSCRIPTION.HOUSES_FOUND,
     );
     if (!selectedHouse) return;
@@ -413,7 +429,7 @@ export class BotService {
 
     await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.SUCCESS, {
       parse_mode: 'Markdown',
-      reply_markup: keyboard,
+      reply_markup: this.keyboard,
     });
 
     return;
