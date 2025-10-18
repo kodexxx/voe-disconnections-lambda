@@ -39,12 +39,10 @@ export class BotService {
       .row()
       .back(BOT_MESSAGES.MENU.BACK);
 
-    this.mainMenu = new Menu(BOT_IDS.MENU.MAIN)
-      .submenu(BOT_MESSAGES.MENU.SETTINGS, BOT_IDS.MENU.SETTINGS)
-      .row()
-      .text(BOT_MESSAGES.BUTTONS.SCHEDULE, (ctx) =>
-        ctx.reply('You pressed B!'),
-      );
+    this.mainMenu = new Menu(BOT_IDS.MENU.MAIN).submenu(
+      BOT_MESSAGES.MENU.SETTINGS,
+      BOT_IDS.MENU.SETTINGS,
+    );
 
     this.mainMenu.register(this.settingsMenu);
 
