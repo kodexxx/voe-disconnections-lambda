@@ -246,10 +246,21 @@ export class BotService {
   private async waitForTextWithCancel(
     conversation: MyConversation,
     ctx: MyContext,
+    message: string,
   ): Promise<string | null> {
+    const cancelKeyboard = new Keyboard()
+      .text(BOT_MESSAGES.BUTTONS.CANCEL)
+      .resized()
+      .oneTime();
+
+    await ctx.reply(message, {
+      parse_mode: 'Markdown',
+      reply_markup: cancelKeyboard,
+    });
+
     const response = await conversation.wait();
 
-    if (response.message?.text === '/cancel') {
+    if (response.message?.text === BOT_MESSAGES.BUTTONS.CANCEL) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CANCELLED, {
         parse_mode: 'Markdown',
         reply_markup: this.keyboard,
@@ -316,10 +327,11 @@ export class BotService {
     });
 
     // Крок 1: Введення та вибір міста
-    await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.ENTER_CITY, {
-      parse_mode: 'Markdown',
-    });
-    const city = await this.waitForTextWithCancel(conversation, ctx);
+    const city = await this.waitForTextWithCancel(
+      conversation,
+      ctx,
+      BOT_MESSAGES.SUBSCRIPTION.ENTER_CITY,
+    );
     if (!city) return;
 
     const cityData = await conversation.external(() =>
@@ -343,10 +355,11 @@ export class BotService {
     if (!selectedCity) return;
 
     // Крок 2: Введення та вибір вулиці
-    await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.ENTER_STREET, {
-      parse_mode: 'Markdown',
-    });
-    const street = await this.waitForTextWithCancel(conversation, ctx);
+    const street = await this.waitForTextWithCancel(
+      conversation,
+      ctx,
+      BOT_MESSAGES.SUBSCRIPTION.ENTER_STREET,
+    );
     if (!street) return;
 
     const streetData = await conversation.external(() =>
@@ -370,10 +383,11 @@ export class BotService {
     if (!selectedStreet) return;
 
     // Крок 3: Введення та вибір будинку
-    await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.ENTER_HOUSE, {
-      parse_mode: 'Markdown',
-    });
-    const house = await this.waitForTextWithCancel(conversation, ctx);
+    const house = await this.waitForTextWithCancel(
+      conversation,
+      ctx,
+      BOT_MESSAGES.SUBSCRIPTION.ENTER_HOUSE,
+    );
     if (!house) return;
 
     const houseData = await conversation.external(() =>
