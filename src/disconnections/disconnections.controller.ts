@@ -21,19 +21,19 @@ export class DisconnectionsController {
       };
     }
 
+    const calendar =
+      await this.disconnectionService.getDisconnectionsScheduleCalendar(
+        payload.cityId,
+        payload.streetId,
+        payload.houseId,
+      );
+
     return {
       statusCode: 200,
-      body: Buffer.from(
-        await this.disconnectionService.getDisconnectionsScheduleCalendar(
-          payload.cityId,
-          payload.streetId,
-          payload.houseId,
-        ),
-      ).toString('base64'),
-      isBase64Encoded: true,
+      body: calendar,
       headers: {
-        'content-type': 'text/calendar',
-        'content-disposition': 'attachment; filename="disconnections.ics',
+        'content-type': 'text/calendar; charset=utf-8',
+        'content-disposition': 'attachment; filename="disconnections.ics"',
       },
     };
   }
