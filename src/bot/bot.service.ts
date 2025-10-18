@@ -248,19 +248,25 @@ export class BotService {
     ctx: MyContext,
     message: string,
   ): Promise<string | null> {
-    const cancelKeyboard = new Keyboard()
-      .text(BOT_MESSAGES.BUTTONS.CANCEL)
-      .resized()
-      .oneTime();
-
     await ctx.reply(message, {
       parse_mode: 'Markdown',
-      reply_markup: cancelKeyboard,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: BOT_MESSAGES.BUTTONS.CANCEL,
+              callback_data: BOT_IDS.CALLBACK.CANCEL,
+            },
+          ],
+        ],
+      },
     });
 
     const response = await conversation.wait();
 
-    if (response.message?.text === BOT_MESSAGES.BUTTONS.CANCEL) {
+    // Перевіряємо, чи це callback від кнопки скасування
+    if (response.callbackQuery?.data === BOT_IDS.CALLBACK.CANCEL) {
+      await response.answerCallbackQuery();
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CANCELLED, {
         parse_mode: 'Markdown',
         reply_markup: this.keyboard,
