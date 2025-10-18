@@ -62,9 +62,12 @@ export function disconnectionMessageTemplate(
     }
   }
 
+  // Футер з посиланнями
+  const footer = `\n\n━━━━━━━━━━━━━━━━\n📱 [Перейти до бота](https://t.me/voeDisconnectionRobot)\n💬 [Приєднатись до чату](https://t.me/+GkKa3Ws_x1M5ZGI6)`;
+
   if (!items.length) {
-    return `*${tgEscape('Відключення відсутні 💡!')}*\n\n📍 ${tgFormat.bold(alias)}${updateTimeText}`;
+    return `*${tgEscape('Відключення відсутні 💡!')}*\n\n📍 ${tgFormat.bold(alias)}${updateTimeText}${footer}`;
   }
 
-  return `🔔 *${tgEscape('Графік відключень')}*\n\n📍 ${tgFormat.bold(alias)}\n\n${items.join('\n\n\n')}${updateTimeText}`;
+  return `🔔 *${tgEscape('Графік відключень')}*\n\n📍 ${tgFormat.bold(alias)}\n\n${items.join('\n\n\n')}${updateTimeText}${footer}`;
 }
