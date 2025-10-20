@@ -32,8 +32,8 @@ functions:
   prefetch:
     handler: src/functions.prefetch
     events:
-#      - http:
-#          path: prefetch-local
+#      - httpApi:
+#          path: /prefetch-local
 #          method: get
       - eventBridge:
           schedule: cron(0/10 * * * ? *)
@@ -42,16 +42,16 @@ functions:
   disconnectionCalendar:
     handler: src/functions.disconnectionCalendar
     events:
-      - http:
-          path: disconnection-calendar
+      - httpApi:
+          path: /disconnection-calendar
           method: get
 
   botWebhookHandler:
     handler: src/functions.botWebhookHandler
     # timeout: 180
     events:
-      - http:
-          path: tg-webhook-handler
+      - httpApi:
+          path: /tg-webhook-handler
           method: post
 
   broadcastMessage:

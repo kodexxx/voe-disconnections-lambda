@@ -1,6 +1,5 @@
 import { Bot, session, webhookCallback, Keyboard } from 'grammy';
-import { APIGatewayEvent } from 'aws-lambda';
-import { Context } from 'aws-lambda';
+import { APIGatewayProxyEventV2, Context } from 'aws-lambda';
 import { BotRepository } from './bot.repository';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
 import { disconnectionMessageTemplate } from './messages/disconnection.message-template';
@@ -136,7 +135,7 @@ export class BotService {
     });
   }
 
-  async handleWebhook(event: APIGatewayEvent, context: Context) {
+  async handleWebhook(event: APIGatewayProxyEventV2, context?: Context) {
     const cb = webhookCallback(this.bot, 'aws-lambda-async');
     return cb(event, context);
   }

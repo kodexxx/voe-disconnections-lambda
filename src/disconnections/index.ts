@@ -1,12 +1,11 @@
-import { APIGatewayProxyHandler } from 'aws-lambda';
+import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { getPayload } from '../common/utils/validation.util';
 import { GetCalendarQueryDto } from './dto/get-calendar-query.dto';
 import { getDisconnectionsModule } from './disconnections.module';
 
-export const disconnectionCalendar: APIGatewayProxyHandler = async (
-  event,
-  context,
-) => {
+export const disconnectionCalendar = async (
+  event: APIGatewayProxyEventV2,
+): Promise<APIGatewayProxyResultV2> => {
   try {
     const payload = await getPayload(
       event.queryStringParameters,
@@ -21,7 +20,7 @@ export const disconnectionCalendar: APIGatewayProxyHandler = async (
       statusCode: 500,
       body: JSON.stringify({ error: e?.message ?? e }),
       headers: {
-        'content-Type': 'application/json',
+        'content-type': 'application/json',
       },
     };
   }

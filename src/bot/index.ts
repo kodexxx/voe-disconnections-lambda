@@ -1,8 +1,8 @@
-import { APIGatewayProxyEvent, Context, Handler } from 'aws-lambda';
+import { APIGatewayProxyEventV2, Context, Handler } from 'aws-lambda';
 import { getBotModule } from './bot.module';
 
 export const botWebhookHandler = async (
-  event: APIGatewayProxyEvent,
+  event: APIGatewayProxyEventV2,
   context: Context,
 ) => {
   return getBotModule().botController.handleWebhook(event, context);
