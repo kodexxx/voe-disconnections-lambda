@@ -1,13 +1,13 @@
-import { APIGatewayEvent, Context } from 'aws-lambda';
+import { APIGatewayProxyEvent, Context, Handler } from 'aws-lambda';
 import { getBotModule } from './bot.module';
 
-export async function botWebhookHandler(
-  event: APIGatewayEvent,
+export const botWebhookHandler = async (
+  event: APIGatewayProxyEvent,
   context: Context,
-) {
+) => {
   return getBotModule().botController.handleWebhook(event, context);
-}
+};
 
-export async function broadcastMessage(event: any) {
+export const broadcastMessage: Handler = async (event, context) => {
   return getBotModule().botController.handleBroadcast(event);
-}
+};

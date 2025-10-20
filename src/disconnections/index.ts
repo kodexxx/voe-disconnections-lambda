@@ -1,9 +1,12 @@
-import { APIGatewayEvent } from 'aws-lambda';
+import { APIGatewayProxyHandler } from 'aws-lambda';
 import { getPayload } from '../common/utils/validation.util';
 import { GetCalendarQueryDto } from './dto/get-calendar-query.dto';
 import { getDisconnectionsModule } from './disconnections.module';
 
-export async function disconnectionCalendar(event: APIGatewayEvent) {
+export const disconnectionCalendar: APIGatewayProxyHandler = async (
+  event,
+  context,
+) => {
   try {
     const payload = await getPayload(
       event.queryStringParameters,
@@ -22,4 +25,4 @@ export async function disconnectionCalendar(event: APIGatewayEvent) {
       },
     };
   }
-}
+};
