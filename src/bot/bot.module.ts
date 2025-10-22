@@ -2,26 +2,24 @@ import { BotService } from './bot.service';
 import { BotController } from './bot.controller';
 import { Bot } from 'grammy';
 import { Config } from '../config';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { getDynamoDBClient } from '../database/database.module';
 import { BotRepository } from './bot.repository';
 import { GrammyStateRepository } from './grammy-state.repository';
 import { DynamodbStorageAdapter } from './adapters/dynamodb-storage.adapter';
 import { getVoeFetcherModule } from '../voe-fetcher/voe-fetcher.module';
 import { getDisconnectionsModule } from '../disconnections/disconnections.module';
+import { createCachedModule } from '../common/utils/module-cache.util';
 
-export const getBotModule = () => {
+export const getBotModule = createCachedModule('bot', () => {
   const voeFetcherModule = getVoeFetcherModule();
   const disconnectionsModule = getDisconnectionsModule();
 
-  const botRepository = new BotRepository(new DynamoDBClient(), {
+  const botRepository = new BotRepository(getDynamoDBClient(), {
     tableName: Config.TELEGRAM_USERS_TABLE,
   });
-  const grammyStateRepository = new GrammyStateRepository(
-    new DynamoDBClient(),
-    {
-      tableName: Config.GRAMMY_STATE_TABLE,
-    },
-  );
+  const grammyStateRepository = new GrammyStateRepository(getDynamoDBClient(), {
+    tableName: Config.GRAMMY_STATE_TABLE,
+  });
   const dynamodbStorageAdapter = new DynamodbStorageAdapter<any>(
     grammyStateRepository,
   );
@@ -36,4 +34,4 @@ export const getBotModule = () => {
   const botController = new BotController(botService);
 
   return { botController, botService };
-};
+});
