@@ -11,7 +11,7 @@
 
 ### 1. ✅ Singleton DynamoDB Client (database module)
 
-**Файл:** [src/database/database.module.ts](src/database/database.module.ts)
+**Файл:** [src/database/database.module.ts](../src/database/database.module.ts)
 
 **Проблема:**
 - Кожен виклик Lambda створював **3 нових** DynamoDB клієнти
@@ -56,7 +56,7 @@ export const getDynamoDBClient = createCachedModule('dynamoDBClient', () => {
 
 ### 2. ✅ Universal Module Caching Wrapper
 
-**Файл:** [src/common/utils/module-cache.util.ts](src/common/utils/module-cache.util.ts)
+**Файл:** [src/common/utils/module-cache.util.ts](../src/common/utils/module-cache.util.ts)
 
 **Проблема:**
 - Кожен виклик Lambda створював нові інстанси:
@@ -105,7 +105,7 @@ export const getBotModule = createCachedModule('bot', () => {
 
 ### 3. ✅ AWS SDK Connection Reuse
 
-**Файл:** [serverless.yml](serverless.yml#L18)
+**Файл:** [serverless.yml](../serverless.yml#L18)
 
 **Додано змінну оточення:**
 ```yaml
@@ -125,7 +125,7 @@ environment:
 
 ### 4. ✅ Lambda Configuration Tuning
 
-**Файл:** [serverless.yml](serverless.yml#L10-L11)
+**Файл:** [serverless.yml](../serverless.yml#L10-L11)
 
 **Глобальні налаштування:**
 ```yaml
@@ -271,7 +271,7 @@ console.log('Module cache stats:', getModuleCacheStats());
 
 ### Фаза 2 - Database Optimization
 
-1. **GSI на subscriptionArgs** ([bot.repository.ts:68-79](src/bot/bot.repository.ts#L68-L79))
+1. **GSI на subscriptionArgs** ([bot.repository.ts:68-79](../src/bot/bot.repository.ts#L68-L79))
    - Замінити `ScanCommand` на `QueryCommand`
    - Очікуване покращення: -1500ms для префетчу
 
