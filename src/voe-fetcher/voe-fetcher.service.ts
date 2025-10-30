@@ -153,7 +153,7 @@ export class VoeFetcherService {
 
         if (halfDiscontented) {
           const isFirstHalf = halfDiscontented.classList.contains('left');
-          const possibility = halfDiscontented.classList.contains('disconnection_confirm_1')
+          const possibility = halfDiscontented.classList.contains('confirm_1')
               ? '(точно)'
               : '(можливо)';
 
@@ -165,9 +165,7 @@ export class VoeFetcherService {
         }
 
         if (disconnected) {
-          const possibility = item
-            .querySelector('div')
-            ?.classList.contains('disconnection_confirm_1')
+          const possibility = item.classList.contains('confirm_1')
             ? '(точно)'
             : '(можливо)';
           currentDay.push({
