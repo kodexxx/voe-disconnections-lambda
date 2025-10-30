@@ -5,7 +5,7 @@ import {
   getUkraineUtcOffsetMinutes,
   mergeInterval,
 } from '../common/utils/date.util';
-import { VOE_CELL_DURATION_MS } from './voe-fetcher.constants';
+import {VOE_CELL_DURATION_MS, VOE_HALF_CELL_DURATION_MS} from './voe-fetcher.constants';
 import querystring from 'querystring';
 
 export class VoeFetcherService {
@@ -127,6 +127,7 @@ export class VoeFetcherService {
       {
         possibility: string;
         time: string;
+        duration: number;
       }[]
     >();
     const tableItems =
@@ -148,6 +149,21 @@ export class VoeFetcherService {
 
       if (currentDay && item.classList.contains('cell')) {
         const disconnected = item.classList.contains('has_disconnection');
+        const halfDiscontented = item.querySelector('div.has_disconnection');
+
+        if (halfDiscontented) {
+          const isFirstHalf = halfDiscontented.classList.contains('left');
+          const possibility = halfDiscontented.classList.contains('disconnection_confirm_1')
+              ? '(точно)'
+              : '(можливо)';
+
+          currentDay.push({
+            time: isFirstHalf ? heads[currentDayCount] : heads[currentDayCount]?.replace(/:00/, ':30'),
+            possibility,
+            duration: VOE_HALF_CELL_DURATION_MS,
+          });
+        }
+
         if (disconnected) {
           const possibility = item
             .querySelector('div')
@@ -157,6 +173,7 @@ export class VoeFetcherService {
           currentDay.push({
             time: heads[currentDayCount],
             possibility,
+            duration: VOE_CELL_DURATION_MS,
           });
         }
         currentDayCount++;
@@ -181,7 +198,7 @@ export class VoeFetcherService {
             Number(minutes),
             getUkraineUtcOffsetMinutes(),
           );
-          const to = new Date(from.getTime() + VOE_CELL_DURATION_MS);
+          const to = new Date(from.getTime() + time.duration);
 
           return { from, to, possibility: time.possibility };
         });
