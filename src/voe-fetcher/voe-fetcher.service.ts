@@ -153,7 +153,7 @@ export class VoeFetcherService {
 
         if (halfDiscontented) {
           const isFirstHalf = halfDiscontented.classList.contains('left');
-          const possibility = halfDiscontented.classList.contains('disconnection_confirm_1')
+          const possibility = halfDiscontented.classList.contains('confirm_1')
               ? '(точно)'
               : '(можливо)';
 
