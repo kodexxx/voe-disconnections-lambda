@@ -13,7 +13,7 @@ provider:
     DYNAMODB_TABLE: ${self:custom.dynamoTable}
     TELEGRAM_USERS_TABLE: ${self:custom.telegramUsersTable}
     GRAMMY_STATE_TABLE: ${self:custom.grammyStateTable}
-    TELEGRAM_BOT_TOKEN: ${self:custom.botToken.BOT_TOKEN}
+    TELEGRAM_BOT_TOKEN: ${self:custom.botToken}
     # Enable HTTP connection reuse for AWS SDK - critical for performance
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
     NODE_OPTIONS: '--enable-source-maps'
@@ -30,7 +30,7 @@ custom:
   dynamoTable: my-disconnection-table
   telegramUsersTable: bot-users
   grammyStateTable: grammy-state-storage
-  botToken: ${ssm:/aws/reference/secretsmanager/telegram}
+  botToken: ${ssm:/voe/telegram/bot_token}
 
 functions:
   prefetch:
