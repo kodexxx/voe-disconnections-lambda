@@ -36,68 +36,120 @@ export class UpdateManagerService {
   ) {}
 
   async prefetchDisconnections() {
-    const items = await this.disconnectionService.getStoredDisconnections();
+    const elapse = elapseTime();
 
-    const promises = items.map(async (schedule) => {
-      const elapse = elapseTime();
-      try {
-        const { cityId, streetId, houseId } = querystring.parse(schedule.args);
-        console.log(`Start update ${schedule.alias}`);
+    const users = await this.botService.getAllUsersWithSubscriptions();
 
-        // Використовуємо моки для тестової адреси
-        const isMockAddress = schedule.args === MOCK_ARGS;
-        let updatedSchedule: VoeDisconnectionValueItem[];
+    console.log(`Found ${users.length} users with subscriptions`);
 
-        if (isMockAddress) {
-          console.log(`Using mock data for ${schedule.alias}`);
-          updatedSchedule = getMockDisconnections();
-        } else {
-          updatedSchedule = await this.voeFetcherService.getDisconnections(
+    const usersBySubscription = new Map<string, number[]>();
+    for (const user of users) {
+      if (!user.subscriptionArgs) continue;
+
+      const userIds = usersBySubscription.get(user.subscriptionArgs) || [];
+      userIds.push(user.userId);
+      usersBySubscription.set(user.subscriptionArgs, userIds);
+    }
+
+    console.log(`Processing ${usersBySubscription.size} unique subscriptions`);
+
+    const promises = Array.from(usersBySubscription.entries()).map(
+      async ([subscriptionArgs, userIds]) => {
+        const updateElapse = elapseTime();
+        try {
+          const { cityId, streetId, houseId } =
+            querystring.parse(subscriptionArgs);
+
+          const existingData =
+            await this.disconnectionService.getDisconnectionsSchedule(
+              cityId.toString(),
+              streetId.toString(),
+              houseId.toString(),
+            );
+
+          console.log(
+            `Start update for subscription: ${existingData?.alias || subscriptionArgs}`,
+          );
+
+          const isMockAddress = subscriptionArgs === MOCK_ARGS;
+          let updatedSchedule: VoeDisconnectionValueItem[];
+
+          if (isMockAddress) {
+            console.log(`Using mock data for ${existingData?.alias}`);
+            updatedSchedule = getMockDisconnections();
+          } else {
+            updatedSchedule = await this.voeFetcherService.getDisconnections(
+              cityId.toString(),
+              streetId.toString(),
+              houseId.toString(),
+            );
+          }
+
+          const updatedEntity = {
+            ...existingData,
+            value: updatedSchedule,
+            lastUpdatedAt: new Date().toISOString(),
+          };
+
+          await this.disconnectionService.updateDisconnection(
             cityId.toString(),
             streetId.toString(),
             houseId.toString(),
+            updatedEntity,
           );
+
+          if (
+            JSON.stringify(existingData?.value) !==
+            JSON.stringify(updatedSchedule)
+          ) {
+            await this.notifyUsers(
+              userIds,
+              updatedSchedule,
+              existingData?.alias || subscriptionArgs,
+              updatedEntity.lastUpdatedAt,
+            );
+            console.log(
+              `Updated and notified ${userIds.length} users for ${existingData?.alias}, took ${updateElapse()}ms`,
+            );
+          } else {
+            console.log(
+              `No changes for ${existingData?.alias} (${userIds.length} users), took ${updateElapse()}ms`,
+            );
+          }
+        } catch (e) {
+          console.error(
+            `Update failed for subscription ${subscriptionArgs}:`,
+            e,
+          );
+          console.log(`Update failed, took ${updateElapse()}ms`);
         }
+      },
+    );
 
-        const updatedEntity = {
-          ...schedule,
-          value: updatedSchedule,
-          lastUpdatedAt: new Date().toISOString(),
-        };
-
-        await this.notify(
-          schedule.args,
-          schedule.value,
-          updatedSchedule,
-          schedule.alias,
-          updatedEntity.lastUpdatedAt,
-        );
-        await this.disconnectionService.updateDisconnection(
-          cityId.toString(),
-          streetId.toString(),
-          houseId.toString(),
-          updatedEntity,
-        );
-        console.log(`Updated ${schedule.alias}, took ${elapse()}ms`);
-      } catch (e) {
-        console.error(e);
-        console.log(`Update failed ${schedule.alias}, took ${elapse()}ms`);
-      }
-    });
-
-    return Promise.allSettled(promises);
+    const results = await Promise.allSettled(promises);
+    console.log(`Total prefetch took ${elapse()}ms`);
+    return results;
   }
 
-  private async notify(
-    args: string,
-    oldData: VoeDisconnectionValueItem[],
-    newData: VoeDisconnectionValueItem[],
+  private async notifyUsers(
+    userIds: number[],
+    data: VoeDisconnectionValueItem[],
     alias: string,
     lastUpdatedAt?: string,
   ) {
-    if (JSON.stringify(oldData) === JSON.stringify(newData)) {
-      return;
-    }
-    await this.botService.notifyWithUpdate(args, newData, alias, lastUpdatedAt);
+    const promises = userIds.map(async (userId) => {
+      try {
+        await this.botService.notifyUserWithUpdate(
+          userId,
+          data,
+          alias,
+          lastUpdatedAt,
+        );
+      } catch (e) {
+        console.error(`Failed to notify user ${userId}:`, e);
+      }
+    });
+
+    return await Promise.all(promises);
   }
 }

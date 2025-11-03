@@ -198,6 +198,27 @@ export class BotService {
     return await Promise.all(promises);
   }
 
+  async notifyUserWithUpdate(
+    userId: number,
+    data: VoeDisconnectionValueItem[],
+    alias: string,
+    lastUpdatedAt?: string,
+  ) {
+    try {
+      await this.bot.api.sendMessage(
+        userId,
+        disconnectionMessageTemplate(data, alias, lastUpdatedAt),
+        { parse_mode: 'MarkdownV2' },
+      );
+    } catch (e) {
+      console.error(`Failed to notify user ${userId}:`, e);
+    }
+  }
+
+  async getAllUsersWithSubscriptions() {
+    return this.botRepository.getAllUsersWithSubscriptions();
+  }
+
   async broadcastMessage(
     message: string,
     parseMode: 'Markdown' | 'MarkdownV2' | 'HTML' = 'Markdown',

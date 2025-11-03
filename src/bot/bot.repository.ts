@@ -87,6 +87,16 @@ export class BotRepository {
     return result.Items.map((item) => this.map(item)).filter((user) => user);
   }
 
+  async getAllUsersWithSubscriptions() {
+    const cmd = new ScanCommand({
+      TableName: this.options.tableName,
+      FilterExpression: 'attribute_exists(subscriptionArgs)',
+    });
+    const result = await this.dynamoDBClient.send(cmd);
+
+    return result.Items.map((item) => this.map(item)).filter((user) => user);
+  }
+
   private map(item: Record<string, AttributeValue>): TelegramUserItemInterface {
     if (!item) {
       return;

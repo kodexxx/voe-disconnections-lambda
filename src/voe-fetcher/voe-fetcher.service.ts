@@ -5,7 +5,10 @@ import {
   getUkraineUtcOffsetMinutes,
   mergeInterval,
 } from '../common/utils/date.util';
-import {VOE_CELL_DURATION_MS, VOE_HALF_CELL_DURATION_MS} from './voe-fetcher.constants';
+import {
+  VOE_CELL_DURATION_MS,
+  VOE_HALF_CELL_DURATION_MS,
+} from './voe-fetcher.constants';
 import querystring from 'querystring';
 
 export class VoeFetcherService {
@@ -154,11 +157,13 @@ export class VoeFetcherService {
         if (halfDiscontented) {
           const isFirstHalf = halfDiscontented.classList.contains('left');
           const possibility = halfDiscontented.classList.contains('confirm_1')
-              ? '(точно)'
-              : '(можливо)';
+            ? '(точно)'
+            : '(можливо)';
 
           currentDay.push({
-            time: isFirstHalf ? heads[currentDayCount] : heads[currentDayCount]?.replace(/:00/, ':30'),
+            time: isFirstHalf
+              ? heads[currentDayCount]
+              : heads[currentDayCount]?.replace(/:00/, ':30'),
             possibility,
             duration: VOE_HALF_CELL_DURATION_MS,
           });
