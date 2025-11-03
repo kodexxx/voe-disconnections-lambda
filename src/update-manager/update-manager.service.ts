@@ -39,10 +39,26 @@ export class UpdateManagerService {
     const elapse = elapseTime();
 
     const users = await this.botService.getAllUsersWithSubscriptions();
-
     console.log(`Found ${users.length} users with subscriptions`);
 
+    const usersBySubscription = this.groupUsersBySubscription(users);
+    console.log(`Processing ${usersBySubscription.size} unique subscriptions`);
+
+    const promises = Array.from(usersBySubscription.entries()).map(
+      ([subscriptionArgs, userIds]) =>
+        this.updateSubscription(subscriptionArgs, userIds),
+    );
+
+    const results = await Promise.allSettled(promises);
+    console.log(`Total prefetch took ${elapse()}ms`);
+    return results;
+  }
+
+  private groupUsersBySubscription(
+    users: Array<{ userId: number; subscriptionArgs?: string }>,
+  ): Map<string, number[]> {
     const usersBySubscription = new Map<string, number[]>();
+
     for (const user of users) {
       if (!user.subscriptionArgs) continue;
 
@@ -51,84 +67,121 @@ export class UpdateManagerService {
       usersBySubscription.set(user.subscriptionArgs, userIds);
     }
 
-    console.log(`Processing ${usersBySubscription.size} unique subscriptions`);
+    return usersBySubscription;
+  }
 
-    const promises = Array.from(usersBySubscription.entries()).map(
-      async ([subscriptionArgs, userIds]) => {
-        const updateElapse = elapseTime();
-        try {
-          const { cityId, streetId, houseId } =
-            querystring.parse(subscriptionArgs);
+  private async updateSubscription(
+    subscriptionArgs: string,
+    userIds: number[],
+  ) {
+    const elapse = elapseTime();
 
-          const existingData =
-            await this.disconnectionService.getDisconnectionsSchedule(
-              cityId.toString(),
-              streetId.toString(),
-              houseId.toString(),
-            );
+    try {
+      const { cityId, streetId, houseId } = querystring.parse(subscriptionArgs);
 
-          console.log(
-            `Start update for subscription: ${existingData?.alias || subscriptionArgs}`,
-          );
+      const existingData =
+        await this.disconnectionService.getDisconnectionsSchedule(
+          cityId.toString(),
+          streetId.toString(),
+          houseId.toString(),
+        );
 
-          const isMockAddress = subscriptionArgs === MOCK_ARGS;
-          let updatedSchedule: VoeDisconnectionValueItem[];
+      console.log(
+        `Start update for subscription: ${existingData?.alias || subscriptionArgs}`,
+      );
 
-          if (isMockAddress) {
-            console.log(`Using mock data for ${existingData?.alias}`);
-            updatedSchedule = getMockDisconnections();
-          } else {
-            updatedSchedule = await this.voeFetcherService.getDisconnections(
-              cityId.toString(),
-              streetId.toString(),
-              houseId.toString(),
-            );
-          }
+      const updatedSchedule = await this.fetchDisconnectionData(
+        subscriptionArgs,
+        cityId.toString(),
+        streetId.toString(),
+        houseId.toString(),
+        existingData?.alias,
+      );
 
-          const updatedEntity = {
-            ...existingData,
-            value: updatedSchedule,
-            lastUpdatedAt: new Date().toISOString(),
-          };
+      await this.saveDisconnectionData(
+        cityId.toString(),
+        streetId.toString(),
+        houseId.toString(),
+        existingData,
+        updatedSchedule,
+      );
 
-          await this.disconnectionService.updateDisconnection(
-            cityId.toString(),
-            streetId.toString(),
-            houseId.toString(),
-            updatedEntity,
-          );
+      await this.notifyIfChanged(
+        existingData,
+        updatedSchedule,
+        userIds,
+        subscriptionArgs,
+        elapse,
+      );
+    } catch (e) {
+      console.error(`Update failed for subscription ${subscriptionArgs}:`, e);
+      console.log(`Update failed, took ${elapse()}ms`);
+    }
+  }
 
-          if (
-            JSON.stringify(existingData?.value) !==
-            JSON.stringify(updatedSchedule)
-          ) {
-            await this.notifyUsers(
-              userIds,
-              updatedSchedule,
-              existingData?.alias || subscriptionArgs,
-              updatedEntity.lastUpdatedAt,
-            );
-            console.log(
-              `Updated and notified ${userIds.length} users for ${existingData?.alias}, took ${updateElapse()}ms`,
-            );
-          } else {
-            console.log(
-              `No changes for ${existingData?.alias} (${userIds.length} users), took ${updateElapse()}ms`,
-            );
-          }
-        } catch (e) {
-          console.error(
-            `Update failed for subscription ${subscriptionArgs}:`,
-            e,
-          );
-          console.log(`Update failed, took ${updateElapse()}ms`);
-        }
-      },
+  private async fetchDisconnectionData(
+    subscriptionArgs: string,
+    cityId: string,
+    streetId: string,
+    houseId: string,
+    alias?: string,
+  ): Promise<VoeDisconnectionValueItem[]> {
+    const isMockAddress = subscriptionArgs === MOCK_ARGS;
+
+    if (isMockAddress) {
+      console.log(`Using mock data for ${alias}`);
+      return getMockDisconnections();
+    }
+
+    return this.voeFetcherService.getDisconnections(cityId, streetId, houseId);
+  }
+
+  private async saveDisconnectionData(
+    cityId: string,
+    streetId: string,
+    houseId: string,
+    existingData: any,
+    updatedSchedule: VoeDisconnectionValueItem[],
+  ) {
+    const updatedEntity = {
+      ...existingData,
+      value: updatedSchedule,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+
+    await this.disconnectionService.updateDisconnection(
+      cityId,
+      streetId,
+      houseId,
+      updatedEntity,
     );
+  }
 
-    const results = await Promise.allSettled(promises);
-    console.log(`Total prefetch took ${elapse()}ms`);
-    return results;
+  private async notifyIfChanged(
+    existingData: any,
+    updatedSchedule: VoeDisconnectionValueItem[],
+    userIds: number[],
+    subscriptionArgs: string,
+    elapse: () => number,
+  ) {
+    const hasChanges =
+      JSON.stringify(existingData?.value) !== JSON.stringify(updatedSchedule);
+
+    if (hasChanges) {
+      await this.notifyUsers(
+        userIds,
+        updatedSchedule,
+        existingData?.alias || subscriptionArgs,
+        new Date().toISOString(),
+      );
+      console.log(
+        `Updated and notified ${userIds.length} users for ${existingData?.alias}, took ${elapse()}ms`,
+      );
+    } else {
+      console.log(
+        `No changes for ${existingData?.alias} (${userIds.length} users), took ${elapse()}ms`,
+      );
+    }
   }
 
   private async notifyUsers(
