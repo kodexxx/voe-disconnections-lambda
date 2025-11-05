@@ -2,8 +2,8 @@ import { elapseTime } from '../common/utils/time.utils';
 import querystring from 'querystring';
 import { DisconnectionService } from '../disconnections/disconnection.service';
 import { VoeFetcherService } from '../voe-fetcher/voe-fetcher.service';
-import { NotificationQueueService } from '../notification/notification-queue.service';
-import { UpdateQueueMessage } from './update-queue.service';
+import { NotificationQueueService } from '../notification-processor/notification-queue.service';
+import { UpdateQueueMessage } from '../queue-manager/update-queue.service';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
 
 const MOCK_ARGS = 'demo-subscription';

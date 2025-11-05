@@ -1,5 +1,5 @@
 import { SQSEvent } from 'aws-lambda';
-import { UpdateQueueMessage } from './update-queue.service';
+import { UpdateQueueMessage } from '../queue-manager/update-queue.service';
 
 /**
  * Lambda handler для моніторингу Update DLQ

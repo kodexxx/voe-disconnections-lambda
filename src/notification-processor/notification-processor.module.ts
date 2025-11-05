@@ -1,4 +1,4 @@
-import { NotificationProcessorService } from './notification-processor';
+import { NotificationProcessorService } from './notification-processor.service';
 import { NotificationProcessorController } from './notification-processor.controller';
 import { getBotModule } from '../bot/bot.module';
 import { createCachedModule } from '../common/utils/module-cache.util';

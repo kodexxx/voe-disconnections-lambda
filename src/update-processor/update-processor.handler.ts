@@ -1,5 +1,5 @@
 import { SQSEvent, SQSBatchResponse } from 'aws-lambda';
-import { UpdateQueueMessage } from './update-queue.service';
+import { UpdateQueueMessage } from '../queue-manager/update-queue.service';
 import { getUpdateProcessorModule } from './update-processor.module';
 
 /**

@@ -1,4 +1,4 @@
-import { QueueManagerService } from './queue-manager';
+import { QueueManagerService } from './queue-manager.service';
 
 export class QueueManagerController {
   constructor(private readonly queueManagerService: QueueManagerService) {}

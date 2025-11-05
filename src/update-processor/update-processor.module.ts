@@ -1,6 +1,6 @@
-import { UpdateProcessorService } from './update-processor';
+import { UpdateProcessorService } from './update-processor.service';
 import { UpdateProcessorController } from './update-processor.controller';
-import { NotificationQueueService } from '../notification/notification-queue.service';
+import { NotificationQueueService } from '../notification-processor/notification-queue.service';
 import { getDisconnectionsModule } from '../disconnections/disconnections.module';
 import { getVoeFetcherModule } from '../voe-fetcher/voe-fetcher.module';
 import { createCachedModule } from '../common/utils/module-cache.util';

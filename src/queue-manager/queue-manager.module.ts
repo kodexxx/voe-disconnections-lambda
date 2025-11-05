@@ -1,4 +1,4 @@
-import { QueueManagerService } from './queue-manager';
+import { QueueManagerService } from './queue-manager.service';
 import { QueueManagerController } from './queue-manager.controller';
 import { UpdateQueueService } from './update-queue.service';
 import { getBotModule } from '../bot/bot.module';

@@ -1,5 +1,5 @@
-import { UpdateProcessorService } from './update-processor';
-import { UpdateQueueMessage } from './update-queue.service';
+import { UpdateProcessorService } from './update-processor.service';
+import { UpdateQueueMessage } from '../queue-manager/update-queue.service';
 
 export class UpdateProcessorController {
   constructor(

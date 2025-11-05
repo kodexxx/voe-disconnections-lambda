@@ -49,7 +49,7 @@ custom:
 functions:
   # 1. Queue Manager - закидає завдання в чергу оновлень
   queueManager:
-    handler: src/update-manager/queue-manager.handler
+    handler: src/queue-manager/queue-manager.handler
     timeout: 60
     memorySize: 512
     events:
@@ -62,7 +62,7 @@ functions:
 
   # 2. Update Processor - обробляє оновлення і закидає сповіщення в чергу
   updateProcessor:
-    handler: src/update-manager/update-processor.handler
+    handler: src/update-processor/update-processor.handler
     timeout: 120
     memorySize: 512
     reservedConcurrency: 5
@@ -78,7 +78,7 @@ functions:
 
   # 3. Notification Processor - відправляє сповіщення користувачам
   notificationProcessor:
-    handler: src/notification/notification-processor.handler
+    handler: src/notification-processor/notification-processor.handler
     timeout: 30
     memorySize: 384
     reservedConcurrency: 25
@@ -93,7 +93,7 @@ functions:
 
   # 4. DLQ Monitors
   updateDLQMonitor:
-    handler: src/update-manager/update-dlq-monitor.handler
+    handler: src/update-processor/update-dlq-monitor.handler
     timeout: 30
     memorySize: 256
     events:
@@ -102,7 +102,7 @@ functions:
           batchSize: 10
 
   notificationDLQMonitor:
-    handler: src/notification/notification-dlq-monitor.handler
+    handler: src/notification-processor/notification-dlq-monitor.handler
     timeout: 30
     memorySize: 256
     events:

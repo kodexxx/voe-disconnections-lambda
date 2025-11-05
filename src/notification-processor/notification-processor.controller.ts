@@ -1,4 +1,4 @@
-import { NotificationProcessorService } from './notification-processor';
+import { NotificationProcessorService } from './notification-processor.service';
 import { NotificationQueueMessage } from './notification-queue.service';
 
 export class NotificationProcessorController {
