@@ -3,22 +3,17 @@ import {
   SendMessageCommand,
   SendMessageBatchCommand,
 } from '@aws-sdk/client-sqs';
-
-export interface UpdateQueueMessage {
-  subscriptionArgs: string;
-  userIds: number[];
-  attempt?: number;
-  enqueuedAt?: string;
-  originalError?: string;
-}
+import { UpdateQueueMessage } from './interfaces/update-queue-message.interface';
+import { chunkArray } from '../common/utils/array.utils';
+import { Config } from '../config';
 
 export class UpdateQueueService {
   private readonly sqs: SQS;
   private readonly queueUrl: string;
 
   constructor() {
-    this.sqs = new SQS({ region: process.env.AWS_REGION || 'us-east-1' });
-    this.queueUrl = process.env.UPDATE_QUEUE_URL!;
+    this.sqs = new SQS({ region: Config.AWS_REGION });
+    this.queueUrl = Config.UPDATE_QUEUE_URL!;
 
     if (!this.queueUrl) {
       throw new Error('UPDATE_QUEUE_URL environment variable is not set');
@@ -50,7 +45,7 @@ export class UpdateQueueService {
       return;
     }
 
-    const batches = this.chunkArray(messages, 10); // SQS макс 10
+    const batches = chunkArray(messages, 10); // SQS макс 10
 
     for (const batch of batches) {
       const command = new SendMessageBatchCommand({
@@ -69,13 +64,5 @@ export class UpdateQueueService {
     }
 
     console.log(`Enqueued ${messages.length} update tasks`);
-  }
-
-  private chunkArray<T>(array: T[], size: number): T[][] {
-    const chunks: T[][] = [];
-    for (let i = 0; i < array.length; i += size) {
-      chunks.push(array.slice(i, i + size));
-    }
-    return chunks;
   }
 }

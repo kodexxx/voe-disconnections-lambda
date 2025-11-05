@@ -1,5 +1,5 @@
 import { BotService } from '../bot/bot.service';
-import { NotificationQueueMessage } from './notification-queue.service';
+import { NotificationQueueMessage } from './interfaces/notification-queue-message.interface';
 
 export class NotificationProcessorService {
   constructor(private readonly botService: BotService) {}

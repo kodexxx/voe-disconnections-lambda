@@ -1,5 +1,5 @@
 import { SQSEvent } from 'aws-lambda';
-import { NotificationQueueMessage } from './notification-queue.service';
+import { NotificationQueueMessage } from './interfaces/notification-queue-message.interface';
 
 /**
  * Lambda handler для моніторингу Notification DLQ

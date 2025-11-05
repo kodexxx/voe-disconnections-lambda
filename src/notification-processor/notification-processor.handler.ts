@@ -1,5 +1,5 @@
 import { SQSEvent, SQSBatchResponse } from 'aws-lambda';
-import { NotificationQueueMessage } from './notification-queue.service';
+import { NotificationQueueMessage } from './interfaces/notification-queue-message.interface';
 import { getNotificationProcessorModule } from './notification-processor.module';
 
 /**

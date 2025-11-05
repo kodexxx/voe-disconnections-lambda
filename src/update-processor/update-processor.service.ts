@@ -3,31 +3,12 @@ import querystring from 'querystring';
 import { DisconnectionService } from '../disconnections/disconnection.service';
 import { VoeFetcherService } from '../voe-fetcher/voe-fetcher.service';
 import { NotificationQueueService } from '../notification-processor/notification-queue.service';
-import { UpdateQueueMessage } from '../queue-manager/update-queue.service';
+import { UpdateQueueMessage } from '../queue-manager/interfaces/update-queue-message.interface';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
-
-const MOCK_ARGS = 'demo-subscription';
-
-function getMockDisconnections(): VoeDisconnectionValueItem[] {
-  const now = Date.now();
-  return [
-    {
-      from: new Date(now + 2 * 60 * 60 * 1000), // +2 години
-      to: new Date(now + 6 * 60 * 60 * 1000), // +6 годин
-      possibility: 'можливе',
-    },
-    {
-      from: new Date(now + 24 * 60 * 60 * 1000), // +1 день
-      to: new Date(now + 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000), // +1 день +4 години
-      possibility: 'можливе',
-    },
-    {
-      from: new Date(now + 48 * 60 * 60 * 1000), // +2 дні
-      to: new Date(now + 48 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000), // +2 дні +3 години
-      possibility: 'точне',
-    },
-  ];
-}
+import {
+  MOCK_SUBSCRIPTION_ARGS,
+  getMockDisconnections,
+} from './utils/mock-data.utils';
 
 export class UpdateProcessorService {
   constructor(
@@ -141,7 +122,7 @@ export class UpdateProcessorService {
     maxRetries = 3,
   ): Promise<VoeDisconnectionValueItem[]> {
     // Mock data для demo підписки
-    const isMockAddress = subscriptionArgs === MOCK_ARGS;
+    const isMockAddress = subscriptionArgs === MOCK_SUBSCRIPTION_ARGS;
     if (isMockAddress) {
       console.log(`Using mock data for ${alias}`);
       return getMockDisconnections();

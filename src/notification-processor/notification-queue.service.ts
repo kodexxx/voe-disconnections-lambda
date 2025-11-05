@@ -4,25 +4,17 @@ import {
   SendMessageBatchCommand,
 } from '@aws-sdk/client-sqs';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
-
-export interface NotificationQueueMessage {
-  userId: number;
-  data: VoeDisconnectionValueItem[];
-  alias: string;
-  lastUpdatedAt: string;
-  subscriptionArgs: string; // Для логування та аналітики
-  attempt?: number;
-  enqueuedAt?: string;
-  originalError?: string;
-}
+import { NotificationQueueMessage } from './interfaces/notification-queue-message.interface';
+import { chunkArray } from '../common/utils/array.utils';
+import { Config } from '../config';
 
 export class NotificationQueueService {
   private readonly sqs: SQS;
   private readonly queueUrl: string;
 
   constructor() {
-    this.sqs = new SQS({ region: process.env.AWS_REGION || 'us-east-1' });
-    this.queueUrl = process.env.NOTIFICATION_QUEUE_URL!;
+    this.sqs = new SQS({ region: Config.AWS_REGION });
+    this.queueUrl = Config.NOTIFICATION_QUEUE_URL!;
 
     if (!this.queueUrl) {
       throw new Error('NOTIFICATION_QUEUE_URL environment variable is not set');
@@ -56,7 +48,7 @@ export class NotificationQueueService {
       return;
     }
 
-    const batches = this.chunkArray(messages, 10); // SQS макс 10
+    const batches = chunkArray(messages, 10); // SQS макс 10
 
     for (const batch of batches) {
       try {
@@ -101,13 +93,5 @@ export class NotificationQueueService {
     }));
 
     await this.enqueueNotificationBatch(messages);
-  }
-
-  private chunkArray<T>(array: T[], size: number): T[][] {
-    const chunks: T[][] = [];
-    for (let i = 0; i < array.length; i += size) {
-      chunks.push(array.slice(i, i + size));
-    }
-    return chunks;
   }
 }
