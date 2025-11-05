@@ -8,6 +8,6 @@ export const botWebhookHandler = async (
   return getBotModule().botController.handleWebhook(event, context);
 };
 
-export const broadcastMessage: Handler = async (event, context) => {
+export const broadcastMessage: Handler = async (event) => {
   return getBotModule().botController.handleBroadcast(event);
 };

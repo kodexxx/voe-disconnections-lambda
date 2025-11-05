@@ -25,6 +25,20 @@ provider:
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.dynamoTable}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.telegramUsersTable}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.grammyStateTable}"
+    - Effect: "Allow"
+      Action:
+        - "sqs:SendMessage"
+        - "sqs:SendMessageBatch"
+        - "sqs:ReceiveMessage"
+        - "sqs:DeleteMessage"
+        - "sqs:DeleteMessageBatch"
+        - "sqs:GetQueueAttributes"
+        - "sqs:ChangeMessageVisibility"
+      Resource:
+        - !GetAtt UpdateQueue.Arn
+        - !GetAtt UpdateDLQ.Arn
+        - !GetAtt NotificationQueue.Arn
+        - !GetAtt NotificationDLQ.Arn
 
 custom:
   dynamoTable: my-disconnection-table
@@ -33,17 +47,78 @@ custom:
   botToken: ${ssm:/voe/telegram/bot_token}
 
 functions:
+  # 1. Queue Manager - закидає завдання в чергу оновлень
+  queueManager:
+    handler: src/update-manager/queue-manager.handler
+    timeout: 60
+    memorySize: 512
+    events:
+      - eventBridge:
+          schedule: cron(0/10 * * * ? *)
+          enabled: true
+          description: 'Enqueue subscription updates every 10 minutes'
+    environment:
+      UPDATE_QUEUE_URL: !Ref UpdateQueue
+
+  # 2. Update Processor - обробляє оновлення і закидає сповіщення в чергу
+  updateProcessor:
+    handler: src/update-manager/update-processor.handler
+    timeout: 120
+    memorySize: 512
+    reservedConcurrency: 5
+    events:
+      - sqs:
+          arn: !GetAtt UpdateQueue.Arn
+          batchSize: 5
+          maximumBatchingWindowInSeconds: 10
+          functionResponseType: ReportBatchItemFailures
+    environment:
+      UPDATE_QUEUE_URL: !Ref UpdateQueue
+      NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
+
+  # 3. Notification Processor - відправляє сповіщення користувачам
+  notificationProcessor:
+    handler: src/notification/notification-processor.handler
+    timeout: 30
+    memorySize: 384
+    reservedConcurrency: 25
+    events:
+      - sqs:
+          arn: !GetAtt NotificationQueue.Arn
+          batchSize: 50
+          maximumBatchingWindowInSeconds: 5
+          functionResponseType: ReportBatchItemFailures
+    environment:
+      NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
+
+  # 4. DLQ Monitors
+  updateDLQMonitor:
+    handler: src/update-manager/update-dlq-monitor.handler
+    timeout: 30
+    memorySize: 256
+    events:
+      - sqs:
+          arn: !GetAtt UpdateDLQ.Arn
+          batchSize: 10
+
+  notificationDLQMonitor:
+    handler: src/notification/notification-dlq-monitor.handler
+    timeout: 30
+    memorySize: 256
+    events:
+      - sqs:
+          arn: !GetAtt NotificationDLQ.Arn
+          batchSize: 10
+
+  # Legacy prefetch function (kept for backward compatibility, will be removed)
   prefetch:
     handler: src/functions.prefetch
     timeout: 60
     memorySize: 512
     events:
-#      - httpApi:
-#          path: /prefetch-local
-#          method: get
-      - eventBridge:
-          schedule: cron(0/10 * * * ? *)
-          enabled: true
+      - httpApi:
+          path: /prefetch-local
+          method: get
 
   disconnectionCalendar:
     handler: src/functions.disconnectionCalendar
@@ -70,6 +145,86 @@ functions:
 
 resources:
   Resources:
+    # ========== UPDATE QUEUES ==========
+
+    # Main queue для обробки оновлень підписок
+    UpdateQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-update-queue-${sls:stage}
+        VisibilityTimeout: 120
+        MessageRetentionPeriod: 345600
+        ReceiveMessageWaitTimeSeconds: 20
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt UpdateDLQ.Arn
+          maxReceiveCount: 3
+
+    # Dead Letter Queue для проблемних оновлень
+    UpdateDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-update-dlq-${sls:stage}
+        MessageRetentionPeriod: 1209600
+
+    # CloudWatch Alarm для Update DLQ
+    UpdateDLQAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: ${self:service}-update-dlq-alarm-${sls:stage}
+        AlarmDescription: 'Alert when messages appear in Update DLQ'
+        MetricName: ApproximateNumberOfMessagesVisible
+        Namespace: AWS/SQS
+        Statistic: Sum
+        Period: 300
+        EvaluationPeriods: 1
+        Threshold: 1
+        ComparisonOperator: GreaterThanOrEqualToThreshold
+        Dimensions:
+          - Name: QueueName
+            Value: !GetAtt UpdateDLQ.QueueName
+        TreatMissingData: notBreaching
+
+    # ========== NOTIFICATION QUEUES ==========
+
+    # Main queue для відправки сповіщень
+    NotificationQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-notification-queue-${sls:stage}
+        VisibilityTimeout: 30
+        MessageRetentionPeriod: 86400
+        ReceiveMessageWaitTimeSeconds: 20
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt NotificationDLQ.Arn
+          maxReceiveCount: 3
+
+    # Dead Letter Queue для невідправлених сповіщень
+    NotificationDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-notification-dlq-${sls:stage}
+        MessageRetentionPeriod: 604800
+
+    # CloudWatch Alarm для Notification DLQ
+    NotificationDLQAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: ${self:service}-notification-dlq-alarm-${sls:stage}
+        AlarmDescription: 'Alert when messages appear in Notification DLQ'
+        MetricName: ApproximateNumberOfMessagesVisible
+        Namespace: AWS/SQS
+        Statistic: Sum
+        Period: 300
+        EvaluationPeriods: 1
+        Threshold: 5
+        ComparisonOperator: GreaterThanOrEqualToThreshold
+        Dimensions:
+          - Name: QueueName
+            Value: !GetAtt NotificationDLQ.QueueName
+        TreatMissingData: notBreaching
+
+    # ========== DYNAMODB TABLES ==========
+
     DynamoDbTable:
       Type: "AWS::DynamoDB::Table"
       Properties:
@@ -103,3 +258,20 @@ resources:
           - AttributeName: "key"
             KeyType: "HASH"
         BillingMode: PAY_PER_REQUEST
+
+  Outputs:
+    UpdateQueueUrl:
+      Description: 'URL of the Update Queue'
+      Value: !Ref UpdateQueue
+
+    NotificationQueueUrl:
+      Description: 'URL of the Notification Queue'
+      Value: !Ref NotificationQueue
+
+    UpdateDLQUrl:
+      Description: 'URL of the Update DLQ'
+      Value: !Ref UpdateDLQ
+
+    NotificationDLQUrl:
+      Description: 'URL of the Notification DLQ'
+      Value: !Ref NotificationDLQ
