@@ -46,6 +46,16 @@ custom:
   grammyStateTable: grammy-state-storage
   botToken: ${ssm:/voe/telegram/bot_token}
 
+# ========================================
+# LAMBDA FUNCTIONS
+# ========================================
+# Settings optimized for current load:
+# - 500 total users
+# - 250 active subscriptions
+# - ~25-50 notifications per cycle (10-20% change rate)
+# - 10-minute update cycle
+# ========================================
+
 functions:
   # 1. Queue Manager - enqueues subscription update tasks
   queueManager:
@@ -61,37 +71,44 @@ functions:
       UPDATE_QUEUE_URL: !Ref UpdateQueue
 
   # 2. Update Processor - processes updates and enqueues notifications
+  # Optimized for ~250 subscriptions per cycle (every 10 min)
+  # 3 concurrent × 10 batch = 30 subscriptions at a time
+  # ~8-9 batches total, ~13 minutes to process all
   updateProcessor:
     handler: src/update-processor/update-processor.handler
     timeout: 120
     memorySize: 512
-    reservedConcurrency: 5
+    reservedConcurrency: 3
     events:
       - sqs:
           arn: !GetAtt UpdateQueue.Arn
-          batchSize: 5
-          maximumBatchingWindowInSeconds: 10
+          batchSize: 10
+          maximumBatchingWindowInSeconds: 5
           functionResponseType: ReportBatchItemFailures
     environment:
       UPDATE_QUEUE_URL: !Ref UpdateQueue
       NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
 
   # 3. Notification Processor - sends notifications to users
+  # Optimized for ~25-50 notifications per cycle (10-20% of subscriptions have changes)
+  # 10 concurrent × 20 batch = 200 capacity (sufficient for 50)
+  # Telegram rate limit: ~30 req/sec, 50 notifications in ~5-10 seconds
   notificationProcessor:
     handler: src/notification-processor/notification-processor.handler
     timeout: 30
     memorySize: 384
-    reservedConcurrency: 25
+    reservedConcurrency: 10
     events:
       - sqs:
           arn: !GetAtt NotificationQueue.Arn
-          batchSize: 50
-          maximumBatchingWindowInSeconds: 5
+          batchSize: 20
+          maximumBatchingWindowInSeconds: 3
           functionResponseType: ReportBatchItemFailures
     environment:
       NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
 
   # 4. DLQ Monitors
+  # DLQs should be mostly empty, smaller batch is more cost-effective
   updateDLQMonitor:
     handler: src/update-processor/update-dlq-monitor.handler
     timeout: 30
