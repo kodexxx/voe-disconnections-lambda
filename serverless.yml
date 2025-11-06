@@ -7,13 +7,13 @@ provider:
   name: aws
   runtime: nodejs20.x
   region: us-east-1
-  memorySize: 256  # Default для простих функцій
+  memorySize: 256  # Default for simple functions
   timeout: 30
   environment:
     DYNAMODB_TABLE: ${self:custom.dynamoTable}
     TELEGRAM_USERS_TABLE: ${self:custom.telegramUsersTable}
     GRAMMY_STATE_TABLE: ${self:custom.grammyStateTable}
-    TELEGRAM_BOT_TOKEN: ${self:custom.botToken.BOT_TOKEN}
+    TELEGRAM_BOT_TOKEN: ${self:custom.botToken}
     # Enable HTTP connection reuse for AWS SDK - critical for performance
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
     NODE_OPTIONS: '--enable-source-maps'
@@ -25,28 +25,120 @@ provider:
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.dynamoTable}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.telegramUsersTable}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.grammyStateTable}"
+    - Effect: "Allow"
+      Action:
+        - "sqs:SendMessage"
+        - "sqs:SendMessageBatch"
+        - "sqs:ReceiveMessage"
+        - "sqs:DeleteMessage"
+        - "sqs:DeleteMessageBatch"
+        - "sqs:GetQueueAttributes"
+        - "sqs:ChangeMessageVisibility"
+      Resource:
+        - !GetAtt UpdateQueue.Arn
+        - !GetAtt UpdateDLQ.Arn
+        - !GetAtt NotificationQueue.Arn
+        - !GetAtt NotificationDLQ.Arn
 
 custom:
   dynamoTable: my-disconnection-table
   telegramUsersTable: bot-users
   grammyStateTable: grammy-state-storage
-  botToken: ${ssm:/aws/reference/secretsmanager/telegram}
+  botToken: ${ssm:/voe/telegram/bot_token}
+
+# ========================================
+# LAMBDA FUNCTIONS
+# ========================================
+# Settings optimized for current load:
+# - 500 total users
+# - 250 active subscriptions
+# - ~25-50 notifications per cycle (10-20% change rate)
+# - 10-minute update cycle
+# ========================================
 
 functions:
-  prefetch:
-    handler: src/functions.prefetch
+  # 1. Queue Manager - enqueues subscription update tasks
+  queueManager:
+    handler: src/queue-manager/handlers.queueManager
     timeout: 60
     memorySize: 512
     events:
-#      - httpApi:
-#          path: /prefetch-local
-#          method: get
       - eventBridge:
           schedule: cron(0/10 * * * ? *)
           enabled: true
+          description: 'Enqueue subscription updates every 10 minutes'
+    environment:
+      UPDATE_QUEUE_URL: !Ref UpdateQueue
+
+  # 2. Update Processor - processes updates and enqueues notifications
+  # Optimized for ~250 subscriptions per cycle (every 10 min)
+  # 3 concurrent × 10 batch = 30 subscriptions at a time
+  # ~8-9 batches total, ~13 minutes to process all
+  updateProcessor:
+    handler: src/update-processor/handlers.updateProcessor
+    timeout: 120
+    memorySize: 512
+    reservedConcurrency: 5
+    events:
+      - sqs:
+          arn: !GetAtt UpdateQueue.Arn
+          batchSize: 10
+          maximumBatchingWindow: 3
+          functionResponseType: ReportBatchItemFailures
+    environment:
+      UPDATE_QUEUE_URL: !Ref UpdateQueue
+      NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
+
+  # 3. Notification Processor - sends notifications to users
+  # Optimized for ~25-50 notifications per cycle (10-20% of subscriptions have changes)
+  # 10 concurrent × 20 batch = 200 capacity (sufficient for 50)
+  # Telegram rate limit: ~30 req/sec, 50 notifications in ~5-10 seconds
+  notificationProcessor:
+    handler: src/notification-processor/handlers.notificationProcessor
+    timeout: 30
+    memorySize: 384
+    reservedConcurrency: 10
+    events:
+      - sqs:
+          arn: !GetAtt NotificationQueue.Arn
+          batchSize: 20
+          maximumBatchingWindow: 3
+          functionResponseType: ReportBatchItemFailures
+    environment:
+      NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
+
+  # 4. DLQ Monitors
+  # DLQs should be mostly empty, smaller batch is more cost-effective
+  updateDLQMonitor:
+    handler: src/update-processor/handlers.updateDlqMonitor
+    timeout: 30
+    memorySize: 256
+    events:
+      - sqs:
+          arn: !GetAtt UpdateDLQ.Arn
+          batchSize: 10
+
+  notificationDLQMonitor:
+    handler: src/notification-processor/handlers.notificationDlqMonitor
+    timeout: 30
+    memorySize: 256
+    events:
+      - sqs:
+          arn: !GetAtt NotificationDLQ.Arn
+          batchSize: 10
+
+  # HTTP API handlers
+  prefetch:
+    handler: src/update-manager/handlers.prefetch
+    timeout: 30
+    memorySize: 512
+    events:
+      - httpApi:
+          path: /prefetch-local
+          method: get
 
   disconnectionCalendar:
-    handler: src/functions.disconnectionCalendar
+    handler: src/disconnections/handlers.disconnectionCalendar
     timeout: 10
     memorySize: 256
     events:
@@ -55,7 +147,7 @@ functions:
           method: get
 
   botWebhookHandler:
-    handler: src/functions.botWebhookHandler
+    handler: src/bot/handlers.webhook
     timeout: 10
     memorySize: 384
     events:
@@ -64,12 +156,92 @@ functions:
           method: post
 
   broadcastMessage:
-    handler: src/functions.broadcastMessage
+    handler: src/bot/handlers.broadcast
     timeout: 120
     memorySize: 384
 
 resources:
   Resources:
+    # ========== UPDATE QUEUES ==========
+
+    # Main queue for processing subscription updates
+    UpdateQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-update-queue-${sls:stage}
+        VisibilityTimeout: 120
+        MessageRetentionPeriod: 345600
+        ReceiveMessageWaitTimeSeconds: 20
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt UpdateDLQ.Arn
+          maxReceiveCount: 3
+
+    # Dead Letter Queue for problematic updates
+    UpdateDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-update-dlq-${sls:stage}
+        MessageRetentionPeriod: 1209600
+
+    # CloudWatch Alarm for Update DLQ
+    UpdateDLQAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: ${self:service}-update-dlq-alarm-${sls:stage}
+        AlarmDescription: 'Alert when messages appear in Update DLQ'
+        MetricName: ApproximateNumberOfMessagesVisible
+        Namespace: AWS/SQS
+        Statistic: Sum
+        Period: 300
+        EvaluationPeriods: 1
+        Threshold: 1
+        ComparisonOperator: GreaterThanOrEqualToThreshold
+        Dimensions:
+          - Name: QueueName
+            Value: !GetAtt UpdateDLQ.QueueName
+        TreatMissingData: notBreaching
+
+    # ========== NOTIFICATION QUEUES ==========
+
+    # Main queue for sending notifications
+    NotificationQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-notification-queue-${sls:stage}
+        VisibilityTimeout: 30
+        MessageRetentionPeriod: 86400
+        ReceiveMessageWaitTimeSeconds: 20
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt NotificationDLQ.Arn
+          maxReceiveCount: 3
+
+    # Dead Letter Queue for unsent notifications
+    NotificationDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-notification-dlq-${sls:stage}
+        MessageRetentionPeriod: 604800
+
+    # CloudWatch Alarm for Notification DLQ
+    NotificationDLQAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: ${self:service}-notification-dlq-alarm-${sls:stage}
+        AlarmDescription: 'Alert when messages appear in Notification DLQ'
+        MetricName: ApproximateNumberOfMessagesVisible
+        Namespace: AWS/SQS
+        Statistic: Sum
+        Period: 300
+        EvaluationPeriods: 1
+        Threshold: 5
+        ComparisonOperator: GreaterThanOrEqualToThreshold
+        Dimensions:
+          - Name: QueueName
+            Value: !GetAtt NotificationDLQ.QueueName
+        TreatMissingData: notBreaching
+
+    # ========== DYNAMODB TABLES ==========
+
     DynamoDbTable:
       Type: "AWS::DynamoDB::Table"
       Properties:
@@ -103,3 +275,20 @@ resources:
           - AttributeName: "key"
             KeyType: "HASH"
         BillingMode: PAY_PER_REQUEST
+
+  Outputs:
+    UpdateQueueUrl:
+      Description: 'URL of the Update Queue'
+      Value: !Ref UpdateQueue
+
+    NotificationQueueUrl:
+      Description: 'URL of the Notification Queue'
+      Value: !Ref NotificationQueue
+
+    UpdateDLQUrl:
+      Description: 'URL of the Update DLQ'
+      Value: !Ref UpdateDLQ
+
+    NotificationDLQUrl:
+      Description: 'URL of the Notification DLQ'
+      Value: !Ref NotificationDLQ
