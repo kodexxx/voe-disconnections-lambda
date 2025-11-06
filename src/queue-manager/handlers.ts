@@ -2,10 +2,10 @@ import { ScheduledHandler } from 'aws-lambda';
 import { getQueueManagerModule } from './queue-manager.module';
 
 /**
- * Lambda handler для закидання підписок в Update Queue
- * Тригерується EventBridge кожні 10 хвилин
+ * Lambda handler for enqueuing subscription updates
+ * Triggered by EventBridge every 10 minutes
  */
-export const handler: ScheduledHandler = async (event) => {
+export const queueManager: ScheduledHandler = async (event) => {
   console.log('QueueManager triggered:', JSON.stringify(event, null, 2));
   await getQueueManagerModule().queueManagerController.enqueueAllUpdates();
 };

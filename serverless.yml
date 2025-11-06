@@ -59,7 +59,7 @@ custom:
 functions:
   # 1. Queue Manager - enqueues subscription update tasks
   queueManager:
-    handler: src/queue-manager/queue-manager.handler
+    handler: src/queue-manager/handlers.queueManager
     timeout: 60
     memorySize: 512
     events:
@@ -75,7 +75,7 @@ functions:
   # 3 concurrent × 10 batch = 30 subscriptions at a time
   # ~8-9 batches total, ~13 minutes to process all
   updateProcessor:
-    handler: src/update-processor/update-processor.handler
+    handler: src/update-processor/handlers.updateProcessor
     timeout: 120
     memorySize: 512
     reservedConcurrency: 3
@@ -83,7 +83,7 @@ functions:
       - sqs:
           arn: !GetAtt UpdateQueue.Arn
           batchSize: 10
-          maximumBatchingWindowInSeconds: 5
+          maximumBatchingWindow: 3
           functionResponseType: ReportBatchItemFailures
     environment:
       UPDATE_QUEUE_URL: !Ref UpdateQueue
@@ -94,7 +94,7 @@ functions:
   # 10 concurrent × 20 batch = 200 capacity (sufficient for 50)
   # Telegram rate limit: ~30 req/sec, 50 notifications in ~5-10 seconds
   notificationProcessor:
-    handler: src/notification-processor/notification-processor.handler
+    handler: src/notification-processor/handlers.notificationProcessor
     timeout: 30
     memorySize: 384
     reservedConcurrency: 10
@@ -102,7 +102,7 @@ functions:
       - sqs:
           arn: !GetAtt NotificationQueue.Arn
           batchSize: 20
-          maximumBatchingWindowInSeconds: 3
+          maximumBatchingWindow: 3
           functionResponseType: ReportBatchItemFailures
     environment:
       NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
@@ -110,7 +110,7 @@ functions:
   # 4. DLQ Monitors
   # DLQs should be mostly empty, smaller batch is more cost-effective
   updateDLQMonitor:
-    handler: src/update-processor/update-dlq-monitor.handler
+    handler: src/update-processor/handlers.updateDlqMonitor
     timeout: 30
     memorySize: 256
     events:
@@ -119,7 +119,7 @@ functions:
           batchSize: 10
 
   notificationDLQMonitor:
-    handler: src/notification-processor/notification-dlq-monitor.handler
+    handler: src/notification-processor/handlers.notificationDlqMonitor
     timeout: 30
     memorySize: 256
     events:
@@ -129,8 +129,8 @@ functions:
 
   # HTTP API handlers
   prefetch:
-    handler: src/update-manager/prefetch.handler
-    timeout: 60
+    handler: src/update-manager/handlers.prefetch
+    timeout: 30
     memorySize: 512
     events:
       - httpApi:
@@ -138,7 +138,7 @@ functions:
           method: get
 
   disconnectionCalendar:
-    handler: src/disconnections/disconnection-calendar.handler
+    handler: src/disconnections/handlers.disconnectionCalendar
     timeout: 10
     memorySize: 256
     events:
@@ -147,7 +147,7 @@ functions:
           method: get
 
   botWebhookHandler:
-    handler: src/bot/webhook.handler
+    handler: src/bot/handlers.webhook
     timeout: 10
     memorySize: 384
     events:
@@ -156,7 +156,7 @@ functions:
           method: post
 
   broadcastMessage:
-    handler: src/bot/broadcast.handler
+    handler: src/bot/handlers.broadcast
     timeout: 120
     memorySize: 384
 

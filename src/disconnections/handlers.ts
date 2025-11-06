@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { getPayload } from '../common/utils/validation.util';
 import { GetCalendarQueryDto } from './dto/get-calendar-query.dto';
@@ -7,7 +8,7 @@ import { getDisconnectionsModule } from './disconnections.module';
  * Lambda handler for disconnection calendar HTTP API
  * Returns calendar of disconnections for given parameters
  */
-export const handler = async (
+export const disconnectionCalendar = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
   try {

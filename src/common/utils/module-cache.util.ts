@@ -16,7 +16,6 @@
  * });
  * ```
  */
-import 'reflect-metadata';
 
 type ModuleFactory<T> = () => T;
 type CachedModule<T> = () => T;

@@ -38,30 +38,40 @@ src/
 
 ### 2. Handler References in serverless.yml
 
-**All Lambda handlers use direct module paths:**
+**All Lambda handlers use `handlers.ts` with named exports:**
 
 ```yaml
 functions:
   # Queue processors and event-driven functions
   queueManager:
-    handler: src/queue-manager/queue-manager.handler
+    handler: src/queue-manager/handlers.queueManager
 
   updateProcessor:
-    handler: src/update-processor/update-processor.handler
+    handler: src/update-processor/handlers.updateProcessor
+
+  updateDLQMonitor:
+    handler: src/update-processor/handlers.updateDlqMonitor
 
   # HTTP API handlers
   prefetch:
-    handler: src/update-manager/prefetch.handler
+    handler: src/update-manager/handlers.prefetch
+
+  disconnectionCalendar:
+    handler: src/disconnections/handlers.disconnectionCalendar
 
   botWebhookHandler:
-    handler: src/bot/webhook.handler
+    handler: src/bot/handlers.webhook
+
+  broadcastMessage:
+    handler: src/bot/handlers.broadcast
 ```
 
 **Key rules:**
-- Each Lambda function has its own `.handler.ts` file
-- Handler files export `handler` (not named exports)
-- Direct path reference in serverless.yml: `src/module-name/function-name.handler`
-- No exports through `src/functions.ts` (kept for backward compatibility only)
+- Each module has ONE `handlers.ts` file with all Lambda handlers for that module
+- Handlers use **named exports** (not `export const handler`)
+- Direct path reference in serverless.yml: `src/module-name/handlers.functionName`
+- If handler uses DTO validation (class-validator), add `import 'reflect-metadata'` at the top
+- No `src/functions.ts` - removed for consistency
 
 ### 3. Single Responsibility Per File
 
@@ -318,8 +328,9 @@ if (e?.error_code === 403) {
 - [ ] Each file contains one class/function OR interfaces only
 - [ ] All env variables go through `Config`
 - [ ] Files named as `name.type.ts`
-- [ ] Handler files export `handler` (not named exports)
-- [ ] serverless.yml uses direct paths (e.g., `src/module/function.handler`)
+- [ ] Each module has `handlers.ts` with named exports
+- [ ] serverless.yml uses pattern: `src/module/handlers.functionName`
+- [ ] Handlers with DTO validation include `import 'reflect-metadata'`
 - [ ] Dependency injection through constructors
 - [ ] Modules use `createCachedModule`
 - [ ] Interfaces in separate files
