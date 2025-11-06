@@ -1,8 +1,8 @@
 import { UpdateProcessorService } from './update-processor.service';
 import { UpdateProcessorController } from './update-processor.controller';
-import { NotificationQueueService } from '../notification-processor/notification-queue.service';
 import { getDisconnectionsModule } from '../disconnections/disconnections.module';
 import { getVoeFetcherModule } from '../voe-fetcher/voe-fetcher.module';
+import { getNotificationProcessorModule } from '../notification-processor/notification-processor.module';
 import { createCachedModule } from '../common/utils/module-cache.util';
 
 export const getUpdateProcessorModule = createCachedModule(
@@ -10,12 +10,12 @@ export const getUpdateProcessorModule = createCachedModule(
   () => {
     const disconnectionsModule = getDisconnectionsModule();
     const voeFetcherModule = getVoeFetcherModule();
-    const notificationQueueService = new NotificationQueueService();
+    const notificationProcessorModule = getNotificationProcessorModule();
 
     const updateProcessorService = new UpdateProcessorService(
       disconnectionsModule.disconnectionService,
       voeFetcherModule.voeFetcherService,
-      notificationQueueService,
+      notificationProcessorModule.notificationQueueService,
     );
 
     const updateProcessorController = new UpdateProcessorController(

@@ -152,6 +152,51 @@ export const getUpdateProcessorModule = createCachedModule(() => {
 
 **Never create services directly in handlers!**
 
+### 7. Module Ownership and Boundaries
+
+**CRITICAL RULE**: Each service must be created in its own module, not in consuming modules.
+
+```typescript
+// ❌ WRONG - update-processor creating notification service
+export const getUpdateProcessorModule = createCachedModule(() => {
+  const notificationQueueService = new NotificationQueueService(sqsClient);
+  // ...
+});
+
+// ✅ CORRECT - notification-processor creates its own services
+export const getNotificationProcessorModule = createCachedModule(() => {
+  const awsModule = getAwsModule();
+  const notificationQueueService = new NotificationQueueService(
+    awsModule.sqsClient
+  );
+
+  return {
+    notificationProcessorService,
+    notificationQueueService, // Export for other modules
+  };
+});
+
+// ✅ CORRECT - update-processor consumes via module
+export const getUpdateProcessorModule = createCachedModule(() => {
+  const notificationModule = getNotificationProcessorModule();
+
+  const updateProcessorService = new UpdateProcessorService(
+    disconnectionService,
+    voeFetcherService,
+    notificationModule.notificationQueueService // Use via module
+  );
+
+  return { updateProcessorService };
+});
+```
+
+**Why this matters:**
+- Maintains clear module boundaries
+- Prevents tight coupling
+- Makes testing easier (can mock entire modules)
+- Explicit dependencies (update-processor depends on notification-processor module, not on AWS)
+- Changes in one module don't leak into others
+
 ## 🗂️ File Organization
 
 ### Naming Conventions

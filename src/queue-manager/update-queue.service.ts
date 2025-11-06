@@ -8,11 +8,9 @@ import { chunkArray } from '../common/utils/array.utils';
 import { Config } from '../config';
 
 export class UpdateQueueService {
-  private readonly sqs: SQS;
   private readonly queueUrl: string;
 
-  constructor() {
-    this.sqs = new SQS({ region: Config.AWS_REGION });
+  constructor(private readonly sqs: SQS) {
     this.queueUrl = Config.UPDATE_QUEUE_URL!;
 
     if (!this.queueUrl) {

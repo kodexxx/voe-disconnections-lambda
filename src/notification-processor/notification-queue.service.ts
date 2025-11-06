@@ -9,11 +9,9 @@ import { chunkArray } from '../common/utils/array.utils';
 import { Config } from '../config';
 
 export class NotificationQueueService {
-  private readonly sqs: SQS;
   private readonly queueUrl: string;
 
-  constructor() {
-    this.sqs = new SQS({ region: Config.AWS_REGION });
+  constructor(private readonly sqs: SQS) {
     this.queueUrl = Config.NOTIFICATION_QUEUE_URL!;
 
     if (!this.queueUrl) {

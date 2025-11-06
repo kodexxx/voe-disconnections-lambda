@@ -210,6 +210,116 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
 };
 ```
 
+## 🏛️ Межі модулів та володіння сервісами
+
+### Правило володіння сервісами
+
+**Кожен сервіс має бути створений у своєму власному модулі, а не в модулях-споживачах.**
+
+Це критичний принцип для підтримки чітких меж між модулями та уникнення сильного зв'язування (tight coupling).
+
+#### ❌ Анти-паттерн: Створення чужих сервісів
+
+```typescript
+// update-processor.module.ts
+export const getUpdateProcessorModule = createCachedModule(() => {
+  // ❌ НЕПРАВИЛЬНО - створюємо NotificationQueueService тут
+  const notificationQueueService = new NotificationQueueService(sqsClient);
+
+  const updateProcessorService = new UpdateProcessorService(
+    disconnectionService,
+    voeFetcherService,
+    notificationQueueService
+  );
+
+  return { updateProcessorService };
+});
+```
+
+**Чому це погано:**
+- Порушує принцип єдиної відповідальності (Single Responsibility)
+- Модуль update-processor не повинен знати, як створювати NotificationQueueService
+- Ускладнює тестування та підтримку
+- Створює непрямі залежності (update-processor залежить від AWS SQS, хоча це відповідальність notification-processor)
+
+#### ✅ Правильний підхід: Кожен модуль володіє своїми сервісами
+
+```typescript
+// notification-processor.module.ts
+export const getNotificationProcessorModule = createCachedModule(() => {
+  const awsModule = getAwsModule();
+
+  // ✅ ПРАВИЛЬНО - створюємо NotificationQueueService в його власному модулі
+  const notificationQueueService = new NotificationQueueService(
+    awsModule.sqsClient
+  );
+
+  const notificationProcessorService = new NotificationProcessorService(
+    botService
+  );
+
+  return {
+    notificationProcessorService,
+    notificationQueueService // Експортуємо для використання іншими модулями
+  };
+});
+
+// update-processor.module.ts
+export const getUpdateProcessorModule = createCachedModule(() => {
+  const notificationProcessorModule = getNotificationProcessorModule();
+
+  // ✅ ПРАВИЛЬНО - отримуємо сервіс з його модуля
+  const updateProcessorService = new UpdateProcessorService(
+    disconnectionService,
+    voeFetcherService,
+    notificationProcessorModule.notificationQueueService // Використовуємо через модуль
+  );
+
+  return { updateProcessorService };
+});
+```
+
+**Чому це правильно:**
+- Кожен модуль відповідає за створення своїх сервісів
+- Чіткі межі між модулями
+- Легко тестувати (можна замокати весь модуль)
+- Явні залежності (update-processor залежить від notification-processor модуля, а не від AWS)
+- Простіше рефакторити (зміни в NotificationQueueService не торкаються update-processor)
+
+### Правило експортів модулів
+
+**Модулі повинні експортувати всі сервіси, які можуть використовуватися іншими модулями.**
+
+```typescript
+export const getModuleModule = createCachedModule(() => {
+  const service1 = new Service1();
+  const service2 = new Service2();
+  const controller = new ModuleController(service1, service2);
+
+  return {
+    controller,      // Використовується в handler
+    service1,        // Може використовуватись іншими модулями
+    service2,        // Може використовуватись іншими модулями
+  };
+});
+```
+
+### Перевірка правильності архітектури
+
+Щоб перевірити, чи правильно розділені модулі, задайте питання:
+
+1. **Чи створює модуль A сервіс, який належить модулю B?**
+   - ❌ Якщо так - це порушення архітектури
+
+2. **Чи модуль знає про внутрішні деталі іншого модуля?**
+   - ❌ Якщо так - це порушення інкапсуляції
+
+3. **Чи можна замінити модуль на mock без зміни коду споживача?**
+   - ✅ Якщо так - архітектура правильна
+
+4. **Чи можна видалити модуль, просто видаливши його папку?**
+   - ✅ Якщо так - модуль добре інкапсульований
+
 ## 📦 Імпорти
 
 ### Правила імпортів
