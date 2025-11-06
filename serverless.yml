@@ -59,7 +59,7 @@ custom:
 functions:
   # 1. Queue Manager - enqueues subscription update tasks
   queueManager:
-    handler: src/functions.queueManager
+    handler: src/queue-manager/queue-manager.handler
     timeout: 60
     memorySize: 512
     events:
@@ -127,9 +127,9 @@ functions:
           arn: !GetAtt NotificationDLQ.Arn
           batchSize: 10
 
-  # Legacy prefetch function (kept for backward compatibility, will be removed)
+  # HTTP API handlers
   prefetch:
-    handler: src/functions.prefetch
+    handler: src/update-manager/prefetch.handler
     timeout: 60
     memorySize: 512
     events:
@@ -138,7 +138,7 @@ functions:
           method: get
 
   disconnectionCalendar:
-    handler: src/functions.disconnectionCalendar
+    handler: src/disconnections/disconnection-calendar.handler
     timeout: 10
     memorySize: 256
     events:
@@ -147,7 +147,7 @@ functions:
           method: get
 
   botWebhookHandler:
-    handler: src/functions.botWebhookHandler
+    handler: src/bot/webhook.handler
     timeout: 10
     memorySize: 384
     events:
@@ -156,7 +156,7 @@ functions:
           method: post
 
   broadcastMessage:
-    handler: src/functions.broadcastMessage
+    handler: src/bot/broadcast.handler
     timeout: 120
     memorySize: 384
 

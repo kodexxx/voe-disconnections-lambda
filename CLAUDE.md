@@ -38,23 +38,30 @@ src/
 
 ### 2. Handler References in serverless.yml
 
-There are two patterns for Lambda handlers:
+**All Lambda handlers use direct module paths:**
 
-#### Pattern 1: Direct Module Path (NEW, PREFERRED)
 ```yaml
 functions:
+  # Queue processors and event-driven functions
   queueManager:
     handler: src/queue-manager/queue-manager.handler
-```
-Use this for new queue processors, schedulers, and event-driven functions.
 
-#### Pattern 2: Functions Export (LEGACY)
-```yaml
-functions:
+  updateProcessor:
+    handler: src/update-processor/update-processor.handler
+
+  # HTTP API handlers
   prefetch:
-    handler: src/functions.prefetch
+    handler: src/update-manager/prefetch.handler
+
+  botWebhookHandler:
+    handler: src/bot/webhook.handler
 ```
-This is used for legacy HTTP API handlers. Don't create new functions with this pattern.
+
+**Key rules:**
+- Each Lambda function has its own `.handler.ts` file
+- Handler files export `handler` (not named exports)
+- Direct path reference in serverless.yml: `src/module-name/function-name.handler`
+- No exports through `src/functions.ts` (kept for backward compatibility only)
 
 ### 3. Single Responsibility Per File
 
@@ -311,6 +318,8 @@ if (e?.error_code === 403) {
 - [ ] Each file contains one class/function OR interfaces only
 - [ ] All env variables go through `Config`
 - [ ] Files named as `name.type.ts`
+- [ ] Handler files export `handler` (not named exports)
+- [ ] serverless.yml uses direct paths (e.g., `src/module/function.handler`)
 - [ ] Dependency injection through constructors
 - [ ] Modules use `createCachedModule`
 - [ ] Interfaces in separate files

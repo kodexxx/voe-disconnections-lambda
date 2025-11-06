@@ -3,7 +3,11 @@ import { getPayload } from '../common/utils/validation.util';
 import { GetCalendarQueryDto } from './dto/get-calendar-query.dto';
 import { getDisconnectionsModule } from './disconnections.module';
 
-export const disconnectionCalendar = async (
+/**
+ * Lambda handler for disconnection calendar HTTP API
+ * Returns calendar of disconnections for given parameters
+ */
+export const handler = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
   try {
