@@ -5,29 +5,6 @@ import { BotService } from '../bot/bot.service';
 import { DisconnectionService } from '../disconnections/disconnection.service';
 import { VoeFetcherService } from '../voe-fetcher/voe-fetcher.service';
 
-const MOCK_ARGS = 'demo-subscription';
-
-function getMockDisconnections(): VoeDisconnectionValueItem[] {
-  const now = Date.now();
-  return [
-    {
-      from: new Date(now + 2 * 60 * 60 * 1000), // +2 години
-      to: new Date(now + 6 * 60 * 60 * 1000), // +6 годин
-      possibility: 'можливе',
-    },
-    {
-      from: new Date(now + 24 * 60 * 60 * 1000), // +1 день
-      to: new Date(now + 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000), // +1 день +4 години
-      possibility: 'можливе',
-    },
-    {
-      from: new Date(now + 48 * 60 * 60 * 1000), // +2 дні
-      to: new Date(now + 48 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000), // +2 дні +3 години
-      possibility: 'точне',
-    },
-  ];
-}
-
 export class UpdateManagerService {
   constructor(
     private readonly disconnectionService: DisconnectionService,
@@ -90,12 +67,10 @@ export class UpdateManagerService {
         `Start update for subscription: ${existingData?.alias || subscriptionArgs}`,
       );
 
-      const updatedSchedule = await this.fetchDisconnectionData(
-        subscriptionArgs,
+      const updatedSchedule = await this.voeFetcherService.getDisconnections(
         cityId.toString(),
         streetId.toString(),
         houseId.toString(),
-        existingData?.alias,
       );
 
       await this.saveDisconnectionData(
@@ -117,23 +92,6 @@ export class UpdateManagerService {
       console.error(`Update failed for subscription ${subscriptionArgs}:`, e);
       console.log(`Update failed, took ${elapse()}ms`);
     }
-  }
-
-  private async fetchDisconnectionData(
-    subscriptionArgs: string,
-    cityId: string,
-    streetId: string,
-    houseId: string,
-    alias?: string,
-  ): Promise<VoeDisconnectionValueItem[]> {
-    const isMockAddress = subscriptionArgs === MOCK_ARGS;
-
-    if (isMockAddress) {
-      console.log(`Using mock data for ${alias}`);
-      return getMockDisconnections();
-    }
-
-    return this.voeFetcherService.getDisconnections(cityId, streetId, houseId);
   }
 
   private async saveDisconnectionData(
