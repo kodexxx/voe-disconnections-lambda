@@ -49,7 +49,7 @@ custom:
 functions:
   # 1. Queue Manager - enqueues subscription update tasks
   queueManager:
-    handler: src/queue-manager/queue-manager.handler
+    handler: src/functions.queueManager
     timeout: 60
     memorySize: 512
     events:
