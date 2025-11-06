@@ -78,7 +78,7 @@ functions:
     handler: src/update-processor/handlers.updateProcessor
     timeout: 120
     memorySize: 512
-    reservedConcurrency: 3
+    reservedConcurrency: 5
     events:
       - sqs:
           arn: !GetAtt UpdateQueue.Arn
