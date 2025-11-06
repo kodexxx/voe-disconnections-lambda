@@ -3,8 +3,8 @@ import { UpdateQueueMessage } from '../queue-manager/interfaces/update-queue-mes
 import { getUpdateProcessorModule } from './update-processor.module';
 
 /**
- * Lambda handler для обробки оновлень з Update Queue
- * Обробляє батчі по 5 повідомлень
+ * Lambda handler for processing updates from Update Queue
+ * Processes batches of 5 messages
  */
 export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   console.log(
@@ -14,7 +14,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   const updateProcessorModule = getUpdateProcessorModule();
   const batchItemFailures: SQSBatchResponse['batchItemFailures'] = [];
 
-  // Обробити кожне повідомлення з batch
+  // Process each message from batch
   for (const record of event.Records) {
     try {
       const message: UpdateQueueMessage = JSON.parse(record.body);
@@ -23,7 +23,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       );
     } catch (e) {
       console.error(`Failed to process message ${record.messageId}:`, e);
-      // Додати до failures - SQS повторить тільки це повідомлення
+      // Add to failures - SQS will retry only this message
       batchItemFailures.push({
         itemIdentifier: record.messageId,
       });

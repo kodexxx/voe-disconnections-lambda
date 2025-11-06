@@ -2,8 +2,8 @@ import { SQSEvent } from 'aws-lambda';
 import { UpdateQueueMessage } from '../queue-manager/interfaces/update-queue-message.interface';
 
 /**
- * Lambda handler для моніторингу Update DLQ
- * Логує повідомлення які провалилися після 3 спроб
+ * Lambda handler for monitoring Update DLQ
+ * Logs messages that failed after 3 attempts
  */
 export const handler = async (event: SQSEvent) => {
   console.error(
@@ -24,14 +24,14 @@ export const handler = async (event: SQSEvent) => {
         messageId: record.messageId,
       });
 
-      // TODO: Відправити в CloudWatch Logs Insights або SNS
-      // TODO: Зберегти в окрему DynamoDB таблицю для ручного перегляду
-      // TODO: Створити метрику для Dashboard
+      // TODO: Send to CloudWatch Logs Insights or SNS
+      // TODO: Save to separate DynamoDB table for manual review
+      // TODO: Create metric for Dashboard
     } catch (e) {
       console.error('Failed to parse DLQ message:', e);
     }
   }
 
-  // Видалити повідомлення з DLQ після логування
+  // Delete messages from DLQ after logging
   return { statusCode: 200 };
 };

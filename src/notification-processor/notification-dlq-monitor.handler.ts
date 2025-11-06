@@ -2,8 +2,8 @@ import { SQSEvent } from 'aws-lambda';
 import { NotificationQueueMessage } from './interfaces/notification-queue-message.interface';
 
 /**
- * Lambda handler для моніторингу Notification DLQ
- * Логує сповіщення які не вдалося відправити після 3 спроб
+ * Lambda handler for monitoring Notification DLQ
+ * Logs notifications that failed to send after 3 attempts
  */
 export const handler = async (event: SQSEvent) => {
   console.error(
@@ -24,15 +24,15 @@ export const handler = async (event: SQSEvent) => {
         messageId: record.messageId,
       });
 
-      // TODO: Зберегти в DynamoDB таблицю failed-notifications для аналітики
-      // TODO: Опційно - відправити в CloudWatch Logs Insights
-      // TODO: Опційно - якщо багато помилок від одного користувача - деактивувати підписку
-      // TODO: Створити метрику для Dashboard
+      // TODO: Save to DynamoDB failed-notifications table for analytics
+      // TODO: Optional - send to CloudWatch Logs Insights
+      // TODO: Optional - if many errors from one user - deactivate subscription
+      // TODO: Create metric for Dashboard
     } catch (e) {
       console.error('Failed to parse DLQ message:', e);
     }
   }
 
-  // Видалити повідомлення з DLQ після логування
+  // Delete messages from DLQ after logging
   return { statusCode: 200 };
 };

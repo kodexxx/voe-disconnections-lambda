@@ -18,7 +18,7 @@ export class UpdateProcessorService {
   ) {}
 
   /**
-   * Обробляє оновлення для однієї підписки
+   * Process an update for a single subscription
    */
   async processUpdate(message: UpdateQueueMessage): Promise<void> {
     const elapse = elapseTime();
@@ -31,7 +31,7 @@ export class UpdateProcessorService {
     try {
       const { cityId, streetId, houseId } = querystring.parse(subscriptionArgs);
 
-      // 1. Отримати існуючі дані
+      // 1. Get existing data
       const existingData =
         await this.disconnectionService.getDisconnectionsSchedule(
           cityId.toString(),
@@ -43,7 +43,7 @@ export class UpdateProcessorService {
         `Fetching data for subscription: ${existingData?.alias || subscriptionArgs}`,
       );
 
-      // 2. Завантажити нові дані з ретраями
+      // 2. Fetch new data with retries
       const updatedSchedule = await this.fetchWithRetry(
         subscriptionArgs,
         cityId.toString(),
@@ -52,7 +52,7 @@ export class UpdateProcessorService {
         existingData?.alias,
       );
 
-      // 3. Зберегти дані
+      // 3. Save data
       const lastUpdatedAt = new Date().toISOString();
       await this.saveDisconnectionData(
         cityId.toString(),
@@ -63,11 +63,11 @@ export class UpdateProcessorService {
         lastUpdatedAt,
       );
 
-      // 4. Перевірити зміни та закинути в чергу сповіщень
+      // 4. Check for changes and enqueue notifications
       const hasChanges = this.checkIfChanged(existingData, updatedSchedule);
 
       if (hasChanges) {
-        // Закинути сповіщення в окрему чергу
+        // Enqueue notifications to a separate queue
         await this.notificationQueueService.enqueueNotificationsForUsers(
           userIds,
           updatedSchedule,
@@ -93,13 +93,13 @@ export class UpdateProcessorService {
         `Failed to process ${subscriptionArgs} (attempt ${attempt + 1}):`,
         e,
       );
-      // Кинути помилку - SQS автоматично зробить retry
+      // Throw error - SQS will automatically retry
       throw e;
     }
   }
 
   /**
-   * Перевіряє чи змінилися дані
+   * Check if data has changed
    */
   private checkIfChanged(
     existingData: any,
@@ -111,7 +111,7 @@ export class UpdateProcessorService {
   }
 
   /**
-   * Завантажує дані з ретраями та експоненційним backoff
+   * Fetch data with retries and exponential backoff
    */
   private async fetchWithRetry(
     subscriptionArgs: string,
@@ -121,7 +121,7 @@ export class UpdateProcessorService {
     alias?: string,
     maxRetries = 3,
   ): Promise<VoeDisconnectionValueItem[]> {
-    // Mock data для demo підписки
+    // Mock data for demo subscription
     const isMockAddress = subscriptionArgs === MOCK_SUBSCRIPTION_ARGS;
     if (isMockAddress) {
       console.log(`Using mock data for ${alias}`);
@@ -146,7 +146,7 @@ export class UpdateProcessorService {
         );
 
         if (i < maxRetries - 1) {
-          // Експоненційний backoff: 1s, 2s, 4s
+          // Exponential backoff: 1s, 2s, 4s
           const delay = Math.pow(2, i) * 1000;
           console.log(`Retrying in ${delay}ms...`);
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -158,7 +158,7 @@ export class UpdateProcessorService {
   }
 
   /**
-   * Зберігає оновлені дані в DynamoDB
+   * Save updated data to DynamoDB
    */
   private async saveDisconnectionData(
     cityId: string,

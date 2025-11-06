@@ -3,8 +3,8 @@ import { NotificationQueueMessage } from './interfaces/notification-queue-messag
 import { getNotificationProcessorModule } from './notification-processor.module';
 
 /**
- * Lambda handler для відправки сповіщень з Notification Queue
- * Обробляє батчі по 50 повідомлень з 25 concurrent executions
+ * Lambda handler for sending notifications from Notification Queue
+ * Processes batches of 50 messages with 25 concurrent executions
  */
 export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   console.log(
@@ -14,7 +14,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   const notificationProcessorModule = getNotificationProcessorModule();
   const batchItemFailures: SQSBatchResponse['batchItemFailures'] = [];
 
-  // Обробити кожне повідомлення з batch
+  // Process each message from batch
   for (const record of event.Records) {
     try {
       const message: NotificationQueueMessage = JSON.parse(record.body);
@@ -23,7 +23,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       );
     } catch (e) {
       console.error(`Failed to process notification ${record.messageId}:`, e);
-      // Додати до failures - SQS повторить тільки це повідомлення
+      // Add to failures - SQS will retry only this message
       batchItemFailures.push({
         itemIdentifier: record.messageId,
       });

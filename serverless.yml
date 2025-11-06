@@ -7,7 +7,7 @@ provider:
   name: aws
   runtime: nodejs20.x
   region: us-east-1
-  memorySize: 256  # Default для простих функцій
+  memorySize: 256  # Default for simple functions
   timeout: 30
   environment:
     DYNAMODB_TABLE: ${self:custom.dynamoTable}
@@ -47,7 +47,7 @@ custom:
   botToken: ${ssm:/voe/telegram/bot_token}
 
 functions:
-  # 1. Queue Manager - закидає завдання в чергу оновлень
+  # 1. Queue Manager - enqueues subscription update tasks
   queueManager:
     handler: src/queue-manager/queue-manager.handler
     timeout: 60
@@ -60,7 +60,7 @@ functions:
     environment:
       UPDATE_QUEUE_URL: !Ref UpdateQueue
 
-  # 2. Update Processor - обробляє оновлення і закидає сповіщення в чергу
+  # 2. Update Processor - processes updates and enqueues notifications
   updateProcessor:
     handler: src/update-processor/update-processor.handler
     timeout: 120
@@ -76,7 +76,7 @@ functions:
       UPDATE_QUEUE_URL: !Ref UpdateQueue
       NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
 
-  # 3. Notification Processor - відправляє сповіщення користувачам
+  # 3. Notification Processor - sends notifications to users
   notificationProcessor:
     handler: src/notification-processor/notification-processor.handler
     timeout: 30
@@ -147,7 +147,7 @@ resources:
   Resources:
     # ========== UPDATE QUEUES ==========
 
-    # Main queue для обробки оновлень підписок
+    # Main queue for processing subscription updates
     UpdateQueue:
       Type: AWS::SQS::Queue
       Properties:
@@ -159,14 +159,14 @@ resources:
           deadLetterTargetArn: !GetAtt UpdateDLQ.Arn
           maxReceiveCount: 3
 
-    # Dead Letter Queue для проблемних оновлень
+    # Dead Letter Queue for problematic updates
     UpdateDLQ:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:service}-update-dlq-${sls:stage}
         MessageRetentionPeriod: 1209600
 
-    # CloudWatch Alarm для Update DLQ
+    # CloudWatch Alarm for Update DLQ
     UpdateDLQAlarm:
       Type: AWS::CloudWatch::Alarm
       Properties:
@@ -186,7 +186,7 @@ resources:
 
     # ========== NOTIFICATION QUEUES ==========
 
-    # Main queue для відправки сповіщень
+    # Main queue for sending notifications
     NotificationQueue:
       Type: AWS::SQS::Queue
       Properties:
@@ -198,14 +198,14 @@ resources:
           deadLetterTargetArn: !GetAtt NotificationDLQ.Arn
           maxReceiveCount: 3
 
-    # Dead Letter Queue для невідправлених сповіщень
+    # Dead Letter Queue for unsent notifications
     NotificationDLQ:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:service}-notification-dlq-${sls:stage}
         MessageRetentionPeriod: 604800
 
-    # CloudWatch Alarm для Notification DLQ
+    # CloudWatch Alarm for Notification DLQ
     NotificationDLQAlarm:
       Type: AWS::CloudWatch::Alarm
       Properties:

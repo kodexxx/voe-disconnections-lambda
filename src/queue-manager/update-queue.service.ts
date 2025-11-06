@@ -21,7 +21,7 @@ export class UpdateQueueService {
   }
 
   /**
-   * Закинути одне оновлення в чергу
+   * Enqueue a single update to the queue
    */
   async enqueueUpdate(message: UpdateQueueMessage): Promise<void> {
     const command = new SendMessageCommand({
@@ -37,7 +37,7 @@ export class UpdateQueueService {
   }
 
   /**
-   * Закинути множинні оновлення в чергу (batch)
+   * Enqueue multiple updates to the queue (batch)
    */
   async enqueueBatch(messages: UpdateQueueMessage[]): Promise<void> {
     if (messages.length === 0) {
@@ -45,7 +45,7 @@ export class UpdateQueueService {
       return;
     }
 
-    const batches = chunkArray(messages, 10); // SQS макс 10
+    const batches = chunkArray(messages, 10); // SQS max 10
 
     for (const batch of batches) {
       const command = new SendMessageBatchCommand({

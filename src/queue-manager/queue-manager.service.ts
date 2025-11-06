@@ -9,13 +9,13 @@ export class QueueManagerService {
   ) {}
 
   /**
-   * Закидає всі підписки користувачів в чергу для обробки
+   * Enqueue all user subscriptions for processing
    */
   async enqueueAllUpdates() {
     const elapse = elapseTime();
 
     try {
-      // 1. Отримати всіх користувачів з підписками
+      // 1. Get all users with subscriptions
       const users = await this.botService.getAllUsersWithSubscriptions();
       console.log(`Found ${users.length} users with subscriptions`);
 
@@ -24,11 +24,11 @@ export class QueueManagerService {
         return { enqueued: 0 };
       }
 
-      // 2. Групувати користувачів по підписках
+      // 2. Group users by subscriptions
       const usersBySubscription = this.groupUsersBySubscription(users);
       console.log(`Enqueuing ${usersBySubscription.size} unique subscriptions`);
 
-      // 3. Створити повідомлення для черги
+      // 3. Create messages for the queue
       const messages = Array.from(usersBySubscription.entries()).map(
         ([subscriptionArgs, userIds]) => ({
           subscriptionArgs,
@@ -36,7 +36,7 @@ export class QueueManagerService {
         }),
       );
 
-      // 4. Закинути в чергу батчами
+      // 4. Enqueue in batches
       await this.queueService.enqueueBatch(messages);
 
       console.log(
@@ -51,7 +51,7 @@ export class QueueManagerService {
   }
 
   /**
-   * Групує користувачів за subscriptionArgs
+   * Group users by subscriptionArgs
    */
   private groupUsersBySubscription(
     users: Array<{ userId: number; subscriptionArgs?: string }>,

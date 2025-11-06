@@ -22,7 +22,7 @@ export class NotificationQueueService {
   }
 
   /**
-   * Закинути одне сповіщення в чергу
+   * Enqueue a single notification to the queue
    */
   async enqueueNotification(message: NotificationQueueMessage): Promise<void> {
     const command = new SendMessageCommand({
@@ -38,7 +38,7 @@ export class NotificationQueueService {
   }
 
   /**
-   * Закинути множинні сповіщення в чергу (batch)
+   * Enqueue multiple notifications to the queue (batch)
    */
   async enqueueNotificationBatch(
     messages: NotificationQueueMessage[],
@@ -48,7 +48,7 @@ export class NotificationQueueService {
       return;
     }
 
-    const batches = chunkArray(messages, 10); // SQS макс 10
+    const batches = chunkArray(messages, 10); // SQS max 10
 
     for (const batch of batches) {
       try {
@@ -67,7 +67,7 @@ export class NotificationQueueService {
         await this.sqs.send(command);
       } catch (e) {
         console.error(`Failed to enqueue notification batch:`, e);
-        // Не кидати помилку - спробувати наступний batch
+        // Don't throw error - try next batch
       }
     }
 
@@ -75,7 +75,7 @@ export class NotificationQueueService {
   }
 
   /**
-   * Закинути сповіщення для багатьох користувачів про одну подію
+   * Enqueue notifications for multiple users about a single event
    */
   async enqueueNotificationsForUsers(
     userIds: number[],
