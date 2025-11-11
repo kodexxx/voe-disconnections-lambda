@@ -11,7 +11,7 @@ import {
 } from './voe-fetcher.constants';
 import querystring from 'querystring';
 import axios, { AxiosInstance } from 'axios';
-import { HttpProxyAgent, HttpsProxyAgent } from 'hpagent';
+import { HttpsProxyAgent } from 'hpagent';
 import { Config } from '../config';
 
 export class VoeFetcherService {
@@ -21,14 +21,16 @@ export class VoeFetcherService {
     // Initialize axios with proxy if configured
     this.axiosInstance = axios.create({
       headers: {
-        'content-type': 'application/x-www-form-urlencoded',
+        accept: 'application/json, text/javascript, */*; q=0.01',
+        referer: 'https://www.voe.com.ua/disconnection/detailed',
+        'user-agent': `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36`,
+        'x-requested-with': 'XMLHttpRequest',
       },
       ...(Config.VOE_PROXY_URL && {
         httpsAgent: new HttpsProxyAgent({
           proxy: Config.VOE_PROXY_URL,
-        }),
-        httpAgent: new HttpProxyAgent({
-          proxy: Config.VOE_PROXY_URL,
+          keepAlive: false,
+          maxSockets: 100,
         }),
       }),
     });
@@ -234,6 +236,11 @@ export class VoeFetcherService {
         house_id: houseId,
         form_id: 'disconnection_detailed_search_form',
       }),
+      {
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        },
+      },
     );
 
     return response.data;
