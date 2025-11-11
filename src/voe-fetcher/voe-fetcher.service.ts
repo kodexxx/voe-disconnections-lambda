@@ -10,8 +10,29 @@ import {
   VOE_HALF_CELL_DURATION_MS,
 } from './voe-fetcher.constants';
 import querystring from 'querystring';
+import axios, { AxiosInstance } from 'axios';
+import { HttpProxyAgent, HttpsProxyAgent } from 'hpagent';
+import { Config } from '../config';
 
 export class VoeFetcherService {
+  private readonly axiosInstance: AxiosInstance;
+
+  constructor() {
+    // Initialize axios with proxy if configured
+    this.axiosInstance = axios.create({
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      ...(Config.VOE_PROXY_URL && {
+        httpsAgent: new HttpsProxyAgent({
+          proxy: Config.VOE_PROXY_URL,
+        }),
+        httpAgent: new HttpProxyAgent({
+          proxy: Config.VOE_PROXY_URL,
+        }),
+      }),
+    });
+  }
   async getDisconnections(
     cityId: string,
     streetId: string,
@@ -35,19 +56,12 @@ export class VoeFetcherService {
     const params = querystring.stringify({
       q: cityName,
     });
-    console.log(
-      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_city?${params}`,
-    );
-    const result = await fetch(
-      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_city?${params}`,
-      {
-        headers: {
-          'content-type': 'application/x-www-form-urlencoded',
-        },
-        method: 'GET',
-      },
-    );
-    const data = await result.json();
+    const url = `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_city?${params}`;
+    console.log('Fetching cities from:', url);
+
+    const response = await this.axiosInstance.get(url);
+    const data = response.data;
+
     return (
       data?.map((item) => {
         const root = HTMLParse(item.label);
@@ -67,19 +81,12 @@ export class VoeFetcherService {
     const params = querystring.stringify({
       q: streetName,
     });
-    console.log(
-      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_street/${cityId}?${params}`,
-    );
-    const result = await fetch(
-      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_street/${cityId}?${params}`,
-      {
-        headers: {
-          'content-type': 'application/x-www-form-urlencoded',
-        },
-        method: 'GET',
-      },
-    );
-    const data = await result.json();
+    const url = `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_street/${cityId}?${params}`;
+    console.log('Fetching streets from:', url);
+
+    const response = await this.axiosInstance.get(url);
+    const data = response.data;
+
     return (
       data?.map((item) => {
         const root = HTMLParse(item.label);
@@ -92,23 +99,19 @@ export class VoeFetcherService {
     );
   }
 
-  async getHouseByName(streetId: string, houseName: string) {
+  async getHouseByName(
+    streetId: string,
+    houseName: string,
+  ): Promise<{ id: string; name: string }[]> {
     const params = querystring.stringify({
       q: houseName,
     });
-    console.log(
-      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_house/${streetId}?${params}`,
-    );
-    const result = await fetch(
-      `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_house/${streetId}?${params}`,
-      {
-        headers: {
-          'content-type': 'application/x-www-form-urlencoded',
-        },
-        method: 'GET',
-      },
-    );
-    const data = await result.json();
+    const url = `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_house/${streetId}?${params}`;
+    console.log('Fetching houses from:', url);
+
+    const response = await this.axiosInstance.get(url);
+    const data = response.data;
+
     return (
       data?.map((item) => {
         const root = HTMLParse(item.label);
@@ -215,26 +218,24 @@ export class VoeFetcherService {
     cityId: string,
     streetId: string,
     houseId: string,
-  ) {
+  ): Promise<Array<{ command: string; data?: string }>> {
     const params = querystring.stringify({
       ajax_form: 1,
       _wrapper_format: 'drupal_ajax',
     });
-    const response = await fetch(
-      `https://www.voe.com.ua/disconnection/detailed?${params}`,
-      {
-        headers: {
-          'content-type': 'application/x-www-form-urlencoded',
-        },
-        method: 'POST',
-        body: new URLSearchParams({
-          city_id: cityId,
-          street_id: streetId,
-          house_id: houseId,
-          form_id: 'disconnection_detailed_search_form',
-        }),
-      },
+    const url = `https://www.voe.com.ua/disconnection/detailed?${params}`;
+    console.log('Fetching detailed disconnection from:', url);
+
+    const response = await this.axiosInstance.post(
+      url,
+      new URLSearchParams({
+        city_id: cityId,
+        street_id: streetId,
+        house_id: houseId,
+        form_id: 'disconnection_detailed_search_form',
+      }),
     );
-    return response.json();
+
+    return response.data;
   }
 }

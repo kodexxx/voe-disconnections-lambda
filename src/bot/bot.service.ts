@@ -1,4 +1,4 @@
-import { Bot, session, webhookCallback, Keyboard } from 'grammy';
+import { Bot, session, webhookCallback, Keyboard, GrammyError } from 'grammy';
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda';
 import { BotRepository } from './bot.repository';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
@@ -137,7 +137,34 @@ export class BotService {
 
   async handleWebhook(event: APIGatewayProxyEventV2, context?: Context) {
     const cb = webhookCallback(this.bot, 'aws-lambda-async');
-    return cb(event, context);
+    try {
+      return await cb(event, context);
+    } catch (e) {
+      if (e.error instanceof GrammyError && e.error.error_code === 403) {
+        console.warn(`User has blocked the bot - ignore`, event);
+        // DON'T throw error - remove from queue
+        // TODO: Optionally - remove user's subscription from DB
+        return {
+          statusCode: 200,
+        };
+      } else if (e.error instanceof GrammyError && e.error.error_code === 400) {
+        console.error(
+          `Invalid message format for user`,
+          e.error.description,
+          event,
+        );
+        // DON'T throw error - data issue, not API issue
+        return {
+          statusCode: 200,
+        };
+      } else if (e.error instanceof GrammyError && e.error.error_code === 429) {
+        console.warn(`Rate limit hit for user`, event);
+        throw e;
+      }
+
+      console.error('Failed to process webhook', e, event);
+      throw e;
+    }
   }
 
   async handleBroadcast(event: any) {
@@ -356,9 +383,20 @@ export class BotService {
     );
     if (!city) return;
 
-    const cityData = await conversation.external(() =>
-      this.voeFetcherService.getCityByName(city),
-    );
+    let cityData: { id: string; name: string }[] | undefined;
+    try {
+      cityData = await conversation.external(() =>
+        this.voeFetcherService.getCityByName(city),
+      );
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+      await ctx.reply(BOT_MESSAGES.ERROR.API_UNAVAILABLE, {
+        parse_mode: 'Markdown',
+        reply_markup: this.keyboard,
+      });
+      return;
+    }
+
     if (!cityData?.length) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CITY_NOT_FOUND, {
         parse_mode: 'Markdown',
@@ -384,9 +422,20 @@ export class BotService {
     );
     if (!street) return;
 
-    const streetData = await conversation.external(() =>
-      this.voeFetcherService.getStreetByName(selectedCity.id, street),
-    );
+    let streetData: { id: string; name: string }[] | undefined;
+    try {
+      streetData = await conversation.external(() =>
+        this.voeFetcherService.getStreetByName(selectedCity.id, street),
+      );
+    } catch (error) {
+      console.error('Error fetching streets:', error);
+      await ctx.reply(BOT_MESSAGES.ERROR.API_UNAVAILABLE, {
+        parse_mode: 'Markdown',
+        reply_markup: this.keyboard,
+      });
+      return;
+    }
+
     if (!streetData?.length) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.STREETS_NOT_FOUND, {
         parse_mode: 'Markdown',
@@ -412,9 +461,20 @@ export class BotService {
     );
     if (!house) return;
 
-    const houseData = await conversation.external(() =>
-      this.voeFetcherService.getHouseByName(selectedStreet.id, house),
-    );
+    let houseData: { id: string; name: string }[] | undefined;
+    try {
+      houseData = await conversation.external(() =>
+        this.voeFetcherService.getHouseByName(selectedStreet.id, house),
+      );
+    } catch (error) {
+      console.error('Error fetching houses:', error);
+      await ctx.reply(BOT_MESSAGES.ERROR.API_UNAVAILABLE, {
+        parse_mode: 'Markdown',
+        reply_markup: this.keyboard,
+      });
+      return;
+    }
+
     if (!houseData?.length) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.HOUSES_NOT_FOUND, {
         parse_mode: 'Markdown',

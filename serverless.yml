@@ -14,6 +14,7 @@ provider:
     TELEGRAM_USERS_TABLE: ${self:custom.telegramUsersTable}
     GRAMMY_STATE_TABLE: ${self:custom.grammyStateTable}
     TELEGRAM_BOT_TOKEN: ${self:custom.botToken}
+    VOE_PROXY_URL: ${self:custom.voeProxyUrl, ''}
     # Enable HTTP connection reuse for AWS SDK - critical for performance
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
     NODE_OPTIONS: '--enable-source-maps'
@@ -45,6 +46,7 @@ custom:
   telegramUsersTable: bot-users
   grammyStateTable: grammy-state-storage
   botToken: ${ssm:/voe/telegram/bot_token}
+  voeProxyUrl: ${ssm:/voe/proxy_url, ''}
 
 # ========================================
 # LAMBDA FUNCTIONS
@@ -64,7 +66,7 @@ functions:
     memorySize: 512
     events:
       - eventBridge:
-          schedule: cron(0/10 * * * ? *)
+          schedule: cron(0/20 * * * ? *)
           enabled: true
           description: 'Enqueue subscription updates every 10 minutes'
     environment:
