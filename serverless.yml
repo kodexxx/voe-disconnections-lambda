@@ -66,14 +66,14 @@ functions:
     memorySize: 512
     events:
       - eventBridge:
-          schedule: cron(0/20 * * * ? *)
+          schedule: cron(0/30 * * * ? *)
           enabled: true
-          description: 'Enqueue subscription updates every 10 minutes'
+          description: 'Enqueue subscription updates every 30 minutes'
     environment:
       UPDATE_QUEUE_URL: !Ref UpdateQueue
 
   # 2. Update Processor - processes updates and enqueues notifications
-  # Optimized for ~250 subscriptions per cycle (every 10 min)
+  # Optimized for ~250 subscriptions per cycle (every 30 min)
   # 3 concurrent × 10 batch = 30 subscriptions at a time
   # ~8-9 batches total, ~13 minutes to process all
   updateProcessor:
