@@ -13,9 +13,18 @@ import querystring from 'querystring';
 import axios, { AxiosInstance } from 'axios';
 import { HttpsProxyAgent } from 'hpagent';
 import { Config } from '../config';
+import { randomChoice } from 'src/common/utils/array.utils';
 
 export class VoeFetcherService {
   private readonly axiosInstance: AxiosInstance;
+  private readonly proxyList = Config.VOE_PROXY_URL.map(
+    (url) =>
+      new HttpsProxyAgent({
+        proxy: url,
+        keepAlive: false,
+        maxSockets: 100,
+      }),
+  );
 
   constructor() {
     // Initialize axios with proxy if configured
@@ -26,13 +35,6 @@ export class VoeFetcherService {
         'user-agent': `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36`,
         'x-requested-with': 'XMLHttpRequest',
       },
-      ...(Config.VOE_PROXY_URL && {
-        httpsAgent: new HttpsProxyAgent({
-          proxy: Config.VOE_PROXY_URL,
-          keepAlive: false,
-          maxSockets: 100,
-        }),
-      }),
     });
   }
   async getDisconnections(
@@ -61,7 +63,9 @@ export class VoeFetcherService {
     const url = `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_city?${params}`;
     console.log('Fetching cities from:', url);
 
-    const response = await this.axiosInstance.get(url);
+    const response = await this.axiosInstance.get(url, {
+      httpsAgent: randomChoice(this.proxyList),
+    });
     const data = response.data;
 
     return (
@@ -86,7 +90,9 @@ export class VoeFetcherService {
     const url = `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_street/${cityId}?${params}`;
     console.log('Fetching streets from:', url);
 
-    const response = await this.axiosInstance.get(url);
+    const response = await this.axiosInstance.get(url, {
+      httpsAgent: randomChoice(this.proxyList),
+    });
     const data = response.data;
 
     return (
@@ -111,7 +117,9 @@ export class VoeFetcherService {
     const url = `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_house/${streetId}?${params}`;
     console.log('Fetching houses from:', url);
 
-    const response = await this.axiosInstance.get(url);
+    const response = await this.axiosInstance.get(url, {
+      httpsAgent: randomChoice(this.proxyList),
+    });
     const data = response.data;
 
     return (
@@ -240,6 +248,7 @@ export class VoeFetcherService {
         headers: {
           'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
         },
+        httpsAgent: randomChoice(this.proxyList),
       },
     );
 

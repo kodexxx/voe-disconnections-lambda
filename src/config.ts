@@ -8,5 +8,6 @@ export const Config = {
   AWS_REGION: process.env.AWS_REGION || 'us-east-1',
   UPDATE_QUEUE_URL: process.env.UPDATE_QUEUE_URL,
   NOTIFICATION_QUEUE_URL: process.env.NOTIFICATION_QUEUE_URL,
-  VOE_PROXY_URL: process.env.VOE_PROXY_URL,
+  VOE_PROXY_URL:
+    process.env?.VOE_PROXY_URL?.split(',').map((s) => s.trim()) ?? [],
 } as const;
