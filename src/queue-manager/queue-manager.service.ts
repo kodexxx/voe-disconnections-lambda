@@ -13,6 +13,15 @@ export class QueueManagerService {
    */
   async enqueueAllUpdates() {
     const elapse = elapseTime();
+    const numberOfUnprocessedMessages =
+      await this.queueService.getQueueUnprocessedMessages();
+
+    if (numberOfUnprocessedMessages > 0) {
+      console.log(
+        `There are still ${numberOfUnprocessedMessages} unprocessed messages in the queue. Skipping enqueue.`,
+      );
+      return { enqueued: 0 };
+    }
 
     try {
       // 1. Get all users with subscriptions
