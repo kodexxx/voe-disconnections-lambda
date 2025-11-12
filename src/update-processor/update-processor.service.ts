@@ -44,12 +44,10 @@ export class UpdateProcessorService {
       );
 
       // 2. Fetch new data with retries
-      const updatedSchedule = await this.fetchWithRetry(
-        subscriptionArgs,
+      const updatedSchedule = await this.voeFetcherService.getDisconnections(
         cityId.toString(),
         streetId.toString(),
         houseId.toString(),
-        existingData?.alias,
       );
 
       // 3. Save data
