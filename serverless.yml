@@ -169,6 +169,7 @@ resources:
     # Main queue for processing subscription updates
     UpdateQueue:
       Type: AWS::SQS::Queue
+      DeletionPolicy: Retain
       Properties:
         QueueName: ${self:service}-update-queue-${sls:stage}
         VisibilityTimeout: 120
@@ -181,6 +182,7 @@ resources:
     # Dead Letter Queue for problematic updates
     UpdateDLQ:
       Type: AWS::SQS::Queue
+      DeletionPolicy: Retain
       Properties:
         QueueName: ${self:service}-update-dlq-${sls:stage}
         MessageRetentionPeriod: 1209600
@@ -208,6 +210,7 @@ resources:
     # Main queue for sending notifications
     NotificationQueue:
       Type: AWS::SQS::Queue
+      DeletionPolicy: Retain
       Properties:
         QueueName: ${self:service}-notification-queue-${sls:stage}
         VisibilityTimeout: 30
@@ -220,6 +223,7 @@ resources:
     # Dead Letter Queue for unsent notifications
     NotificationDLQ:
       Type: AWS::SQS::Queue
+      DeletionPolicy: Retain
       Properties:
         QueueName: ${self:service}-notification-dlq-${sls:stage}
         MessageRetentionPeriod: 604800
@@ -246,6 +250,7 @@ resources:
 
     DynamoDbTable:
       Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
       Properties:
         TableName: ${self:custom.dynamoTable}
         AttributeDefinitions:
@@ -257,6 +262,7 @@ resources:
         BillingMode: PAY_PER_REQUEST
     TelegramUserTable:
       Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
       Properties:
         TableName: ${self:custom.telegramUsersTable}
         AttributeDefinitions:
@@ -268,6 +274,7 @@ resources:
         BillingMode: PAY_PER_REQUEST
     GrammyStateStorage:
       Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
       Properties:
         TableName: ${self:custom.grammyStateTable}
         AttributeDefinitions:

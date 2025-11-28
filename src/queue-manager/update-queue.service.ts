@@ -7,7 +7,6 @@ import {
 import { UpdateQueueMessage } from './interfaces/update-queue-message.interface';
 import { chunkArray } from '../common/utils/array.utils';
 import { Config } from '../config';
-import { da } from 'date-fns/locale';
 
 export class UpdateQueueService {
   private readonly queueUrl: string;
