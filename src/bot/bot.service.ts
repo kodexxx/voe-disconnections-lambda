@@ -17,6 +17,7 @@ import querystring from 'querystring';
 import { MyContext, MyConversation } from './types/conversation.types';
 import { VoeLocationItem } from '../voe-fetcher/interfaces/voe-location-item.interface';
 import { BOT_MESSAGES, BOT_IDS } from './constants/messages.constants';
+import { NotificationQueueService } from '../notification-processor/notification-queue.service';
 
 export class BotService {
   private readonly mainMenu: Menu;
@@ -29,6 +30,7 @@ export class BotService {
     private readonly dynamodbStorageAdapter: DynamodbStorageAdapter<ConversationFlavor>,
     private readonly voeFetcherService: VoeFetcherService,
     private readonly disconnectionService: DisconnectionService,
+    private readonly notificationQueueService: NotificationQueueService,
   ) {
     // Initialize menus and keyboard
     this.settingsMenu = new Menu(BOT_IDS.MENU.SETTINGS)
@@ -184,12 +186,24 @@ export class BotService {
         };
       }
 
-      const result = await this.broadcastMessage(message, parseMode);
+      // Get all users and enqueue broadcast messages
+      const allUsers = await this.botRepository.getAllUsers();
+      const userIds = allUsers.map((user) => user.userId);
+
+      await this.notificationQueueService.enqueueBroadcastForUsers(
+        userIds,
+        message,
+        parseMode,
+      );
 
       return {
         success: true,
         message: BOT_MESSAGES.BROADCAST.COMPLETED,
-        statistics: result,
+        statistics: {
+          total: userIds.length,
+          queued: userIds.length,
+          method: 'queue',
+        },
       };
     } catch (error) {
       console.error('Broadcast error:', error);
@@ -238,52 +252,22 @@ export class BotService {
     );
   }
 
-  async getAllUsersWithSubscriptions() {
-    return this.botRepository.getAllUsersWithSubscriptions();
-  }
-
-  async broadcastMessage(
+  /**
+   * Send a custom message to a user
+   * Used for broadcast messages
+   */
+  sendMessageToUser(
+    userId: number,
     message: string,
     parseMode: 'Markdown' | 'MarkdownV2' | 'HTML' = 'Markdown',
   ) {
-    const allUsers = await this.botRepository.getAllUsers();
-
-    let successCount = 0;
-    let failedCount = 0;
-    const failedUsers = [];
-
-    const promises = allUsers.map(async (user) => {
-      try {
-        await this.bot.api.sendMessage(user.userId, message, {
-          parse_mode: parseMode,
-        });
-        successCount++;
-      } catch (e) {
-        failedCount++;
-        failedUsers.push(user.userId);
-
-        // Log the error for debugging purposes
-        if (e.error_code === 403) {
-          console.log(`User ${user.userId} has blocked the bot`);
-        } else if (e.error_code === 400) {
-          console.error(
-            `Invalid message format for user ${user.userId}:`,
-            e.description,
-          );
-        } else {
-          console.error(`Failed to send message to user ${user.userId}:`, e);
-        }
-      }
+    return this.bot.api.sendMessage(userId, message, {
+      parse_mode: parseMode,
     });
+  }
 
-    await Promise.all(promises);
-
-    return {
-      success: successCount,
-      failed: failedCount,
-      failedUsers,
-      total: allUsers.length,
-    };
+  async getAllUsersWithSubscriptions() {
+    return this.botRepository.getAllUsersWithSubscriptions();
   }
 
   private async waitForTextWithCancel(

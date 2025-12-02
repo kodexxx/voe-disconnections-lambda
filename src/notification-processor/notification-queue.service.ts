@@ -4,7 +4,11 @@ import {
   SendMessageBatchCommand,
 } from '@aws-sdk/client-sqs';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
-import { NotificationQueueMessage } from './interfaces/notification-queue-message.interface';
+import {
+  NotificationQueueMessage,
+  UpdateNotificationMessage,
+  BroadcastNotificationMessage,
+} from './interfaces/notification-queue-message.interface';
 import { chunkArray } from '../common/utils/array.utils';
 import { Config } from '../config';
 
@@ -82,12 +86,32 @@ export class NotificationQueueService {
     subscriptionArgs: string,
     lastUpdatedAt: string,
   ): Promise<void> {
-    const messages: NotificationQueueMessage[] = userIds.map((userId) => ({
+    const messages: UpdateNotificationMessage[] = userIds.map((userId) => ({
+      type: 'update',
       userId,
       data,
       alias,
       subscriptionArgs,
       lastUpdatedAt,
+    }));
+
+    await this.enqueueNotificationBatch(messages);
+  }
+
+  /**
+   * Enqueue broadcast message for multiple users
+   * This is memory-efficient for large user bases (8k+ users)
+   */
+  async enqueueBroadcastForUsers(
+    userIds: number[],
+    message: string,
+    parseMode: 'Markdown' | 'MarkdownV2' | 'HTML' = 'Markdown',
+  ): Promise<void> {
+    const messages: BroadcastNotificationMessage[] = userIds.map((userId) => ({
+      type: 'broadcast',
+      userId,
+      message,
+      parseMode,
     }));
 
     await this.enqueueNotificationBatch(messages);

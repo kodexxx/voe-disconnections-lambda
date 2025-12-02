@@ -1,30 +1,36 @@
 import { GrammyError } from 'grammy';
 import { BotService } from '../bot/bot.service';
-import { NotificationQueueMessage } from './interfaces/notification-queue-message.interface';
+import {
+  NotificationQueueMessage,
+  UpdateNotificationMessage,
+  BroadcastNotificationMessage,
+} from './interfaces/notification-queue-message.interface';
 
 export class NotificationProcessorService {
   constructor(private readonly botService: BotService) {}
 
   /**
    * Process a single notification from the queue
+   * Handles both update notifications and broadcast messages
    */
-  async processNotification(message: NotificationQueueMessage): Promise<void> {
-    const { userId, data, alias, lastUpdatedAt, attempt = 0 } = message;
-
-    console.log(
-      `Sending notification to user ${userId} for ${alias} (attempt ${attempt + 1})`,
-    );
+  async processNotification(
+    message: NotificationQueueMessage &
+      (UpdateNotificationMessage | BroadcastNotificationMessage),
+  ): Promise<void> {
+    const { userId } = message;
 
     try {
-      // Send notification via Telegram
-      await this.botService.notifyUserWithUpdate(
-        userId,
-        data,
-        alias,
-        lastUpdatedAt,
-      );
-
-      console.log(`Successfully notified user ${userId} for ${alias}`);
+      // Handle different notification types
+      if ('type' in message && message.type === 'broadcast') {
+        await this.processBroadcastNotification(message);
+      } else if ('type' in message && message.type === 'update') {
+        await this.processUpdateNotification(message);
+      } else {
+        // Backward compatibility: treat messages without type as updates
+        await this.processUpdateNotification(
+          message as UpdateNotificationMessage,
+        );
+      }
     } catch (e: any) {
       if (e instanceof GrammyError && e.error_code === 403) {
         console.warn(
@@ -48,5 +54,49 @@ export class NotificationProcessorService {
       console.error(`Failed to notify user ${userId}:`, e);
       throw e;
     }
+  }
+
+  /**
+   * Process update notification with disconnection schedule
+   */
+  private async processUpdateNotification(
+    message: UpdateNotificationMessage,
+  ): Promise<void> {
+    const { userId, data, alias, lastUpdatedAt, attempt = 0 } = message;
+
+    console.log(
+      `Sending update notification to user ${userId} for ${alias} (attempt ${attempt + 1})`,
+    );
+
+    await this.botService.notifyUserWithUpdate(
+      userId,
+      data,
+      alias,
+      lastUpdatedAt,
+    );
+
+    console.log(`Successfully sent update to user ${userId} for ${alias}`);
+  }
+
+  /**
+   * Process broadcast notification with custom message
+   */
+  private async processBroadcastNotification(
+    message: BroadcastNotificationMessage,
+  ): Promise<void> {
+    const {
+      userId,
+      message: text,
+      parseMode = 'Markdown',
+      attempt = 0,
+    } = message;
+
+    console.log(
+      `Sending broadcast message to user ${userId} (attempt ${attempt + 1})`,
+    );
+
+    await this.botService.sendMessageToUser(userId, text, parseMode);
+
+    console.log(`Successfully sent broadcast to user ${userId}`);
   }
 }

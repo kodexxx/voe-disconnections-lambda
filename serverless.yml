@@ -161,6 +161,8 @@ functions:
     handler: src/bot/handlers.broadcast
     timeout: 120
     memorySize: 384
+    environment:
+      NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
 
 resources:
   Resources:
