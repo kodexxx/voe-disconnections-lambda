@@ -2,6 +2,7 @@ import {
   SQS,
   SendMessageCommand,
   SendMessageBatchCommand,
+  GetQueueAttributesCommand,
 } from '@aws-sdk/client-sqs';
 import { UpdateQueueMessage } from './interfaces/update-queue-message.interface';
 import { chunkArray } from '../common/utils/array.utils';
@@ -62,5 +63,14 @@ export class UpdateQueueService {
     }
 
     console.log(`Enqueued ${messages.length} update tasks`);
+  }
+
+  async getQueueUnprocessedMessages() {
+    const command = new GetQueueAttributesCommand({
+      QueueUrl: this.queueUrl,
+    });
+
+    const data = await this.sqs.send(command);
+    return Number(data.Attributes?.ApproximateNumberOfMessages ?? 0);
   }
 }

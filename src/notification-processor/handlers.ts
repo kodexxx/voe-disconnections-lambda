@@ -1,5 +1,9 @@
 import { SQSEvent, SQSBatchResponse } from 'aws-lambda';
-import { NotificationQueueMessage } from './interfaces/notification-queue-message.interface';
+import {
+  NotificationQueueMessage,
+  UpdateNotificationMessage,
+  BroadcastNotificationMessage,
+} from './interfaces/notification-queue-message.interface';
 import { getNotificationProcessorModule } from './notification-processor.module';
 
 /**
@@ -19,7 +23,10 @@ export const notificationProcessor = async (
   // Process each message from batch
   for (const record of event.Records) {
     try {
-      const message: NotificationQueueMessage = JSON.parse(record.body);
+      const message: NotificationQueueMessage &
+        (UpdateNotificationMessage | BroadcastNotificationMessage) = JSON.parse(
+        record.body,
+      );
       await notificationProcessorModule.notificationProcessorController.processNotification(
         message,
       );
@@ -50,17 +57,34 @@ export const notificationDlqMonitor = async (event: SQSEvent) => {
 
   for (const record of event.Records) {
     try {
-      const message: NotificationQueueMessage = JSON.parse(record.body);
+      const message: NotificationQueueMessage &
+        (UpdateNotificationMessage | BroadcastNotificationMessage) = JSON.parse(
+        record.body,
+      );
 
-      console.error('Failed notification:', {
+      const baseInfo = {
         userId: message.userId,
-        alias: message.alias,
-        subscriptionArgs: message.subscriptionArgs,
         attempts: message.attempt,
         enqueuedAt: message.enqueuedAt,
         error: message.originalError,
         messageId: record.messageId,
-      });
+      };
+
+      // Log type-specific details
+      if ('type' in message && message.type === 'update') {
+        console.error('Failed update notification:', {
+          ...baseInfo,
+          alias: message.alias,
+          subscriptionArgs: message.subscriptionArgs,
+        });
+      } else if ('type' in message && message.type === 'broadcast') {
+        console.error('Failed broadcast notification:', {
+          ...baseInfo,
+          messagePreview: message.message.substring(0, 50),
+        });
+      } else {
+        console.error('Failed notification (legacy):', baseInfo);
+      }
 
       // TODO: Save to DynamoDB failed-notifications table for analytics
       // TODO: Optional - send to CloudWatch Logs Insights

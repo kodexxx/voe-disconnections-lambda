@@ -14,9 +14,11 @@ provider:
     TELEGRAM_USERS_TABLE: ${self:custom.telegramUsersTable}
     GRAMMY_STATE_TABLE: ${self:custom.grammyStateTable}
     TELEGRAM_BOT_TOKEN: ${self:custom.botToken}
+    VOE_PROXY_URL: ${self:custom.voeProxyUrl, ''}
     # Enable HTTP connection reuse for AWS SDK - critical for performance
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
     NODE_OPTIONS: '--enable-source-maps'
+    NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
   iamRoleStatements:
     - Effect: "Allow"
       Action:
@@ -45,6 +47,7 @@ custom:
   telegramUsersTable: bot-users
   grammyStateTable: grammy-state-storage
   botToken: ${ssm:/voe/telegram/bot_token}
+  voeProxyUrl: ${ssm:/voe/proxy_url, ''}
 
 # ========================================
 # LAMBDA FUNCTIONS
@@ -64,14 +67,14 @@ functions:
     memorySize: 512
     events:
       - eventBridge:
-          schedule: cron(0/10 * * * ? *)
+          schedule: cron(0/30 * * * ? *)
           enabled: true
-          description: 'Enqueue subscription updates every 10 minutes'
+          description: 'Enqueue subscription updates every 30 minutes'
     environment:
       UPDATE_QUEUE_URL: !Ref UpdateQueue
 
   # 2. Update Processor - processes updates and enqueues notifications
-  # Optimized for ~250 subscriptions per cycle (every 10 min)
+  # Optimized for ~250 subscriptions per cycle (every 30 min)
   # 3 concurrent × 10 batch = 30 subscriptions at a time
   # ~8-9 batches total, ~13 minutes to process all
   updateProcessor:
@@ -159,6 +162,8 @@ functions:
     handler: src/bot/handlers.broadcast
     timeout: 120
     memorySize: 384
+    environment:
+      NOTIFICATION_QUEUE_URL: !Ref NotificationQueue
 
 resources:
   Resources:
@@ -167,6 +172,7 @@ resources:
     # Main queue for processing subscription updates
     UpdateQueue:
       Type: AWS::SQS::Queue
+      DeletionPolicy: Retain
       Properties:
         QueueName: ${self:service}-update-queue-${sls:stage}
         VisibilityTimeout: 120
@@ -179,6 +185,7 @@ resources:
     # Dead Letter Queue for problematic updates
     UpdateDLQ:
       Type: AWS::SQS::Queue
+      DeletionPolicy: Retain
       Properties:
         QueueName: ${self:service}-update-dlq-${sls:stage}
         MessageRetentionPeriod: 1209600
@@ -206,6 +213,7 @@ resources:
     # Main queue for sending notifications
     NotificationQueue:
       Type: AWS::SQS::Queue
+      DeletionPolicy: Retain
       Properties:
         QueueName: ${self:service}-notification-queue-${sls:stage}
         VisibilityTimeout: 30
@@ -218,6 +226,7 @@ resources:
     # Dead Letter Queue for unsent notifications
     NotificationDLQ:
       Type: AWS::SQS::Queue
+      DeletionPolicy: Retain
       Properties:
         QueueName: ${self:service}-notification-dlq-${sls:stage}
         MessageRetentionPeriod: 604800
@@ -244,6 +253,7 @@ resources:
 
     DynamoDbTable:
       Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
       Properties:
         TableName: ${self:custom.dynamoTable}
         AttributeDefinitions:
@@ -255,6 +265,7 @@ resources:
         BillingMode: PAY_PER_REQUEST
     TelegramUserTable:
       Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
       Properties:
         TableName: ${self:custom.telegramUsersTable}
         AttributeDefinitions:
@@ -266,6 +277,7 @@ resources:
         BillingMode: PAY_PER_REQUEST
     GrammyStateStorage:
       Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
       Properties:
         TableName: ${self:custom.grammyStateTable}
         AttributeDefinitions:

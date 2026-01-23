@@ -8,6 +8,7 @@ import { GrammyStateRepository } from './grammy-state.repository';
 import { DynamodbStorageAdapter } from './adapters/dynamodb-storage.adapter';
 import { getVoeFetcherModule } from '../voe-fetcher/voe-fetcher.module';
 import { getDisconnectionsModule } from '../disconnections/disconnections.module';
+import { NotificationQueueService } from '../notification-processor/notification-queue.service';
 import { createCachedModule } from '../common/utils/module-cache.util';
 
 export const getBotModule = createCachedModule('bot', () => {
@@ -28,12 +29,18 @@ export const getBotModule = createCachedModule('bot', () => {
     grammyStateRepository,
   );
 
+  // Create NotificationQueueService for broadcast support
+  const notificationQueueService = new NotificationQueueService(
+    awsModule.sqsClient,
+  );
+
   const botService = new BotService(
     new Bot(Config.TELEGRAM_BOT_TOKEN),
     botRepository,
     dynamodbStorageAdapter,
     voeFetcherModule.voeFetcherService,
     disconnectionsModule.disconnectionService,
+    notificationQueueService,
   );
   const botController = new BotController(botService);
 

@@ -5,3 +5,9 @@ export function chunkArray<T>(array: T[], size: number): T[][] {
   }
   return chunks;
 }
+
+export function randomChoice<T>(array: T[]): T | undefined {
+  if (array.length === 0) return undefined;
+  const index = Math.floor(Math.random() * array.length);
+  return array[index];
+}

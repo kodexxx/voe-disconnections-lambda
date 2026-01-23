@@ -1,4 +1,4 @@
-import { Bot, session, webhookCallback, Keyboard } from 'grammy';
+import { Bot, session, webhookCallback, Keyboard, GrammyError } from 'grammy';
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda';
 import { BotRepository } from './bot.repository';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
@@ -17,6 +17,7 @@ import querystring from 'querystring';
 import { MyContext, MyConversation } from './types/conversation.types';
 import { VoeLocationItem } from '../voe-fetcher/interfaces/voe-location-item.interface';
 import { BOT_MESSAGES, BOT_IDS } from './constants/messages.constants';
+import { NotificationQueueService } from '../notification-processor/notification-queue.service';
 
 export class BotService {
   private readonly mainMenu: Menu;
@@ -29,6 +30,7 @@ export class BotService {
     private readonly dynamodbStorageAdapter: DynamodbStorageAdapter<ConversationFlavor>,
     private readonly voeFetcherService: VoeFetcherService,
     private readonly disconnectionService: DisconnectionService,
+    private readonly notificationQueueService: NotificationQueueService,
   ) {
     // Initialize menus and keyboard
     this.settingsMenu = new Menu(BOT_IDS.MENU.SETTINGS)
@@ -137,7 +139,34 @@ export class BotService {
 
   async handleWebhook(event: APIGatewayProxyEventV2, context?: Context) {
     const cb = webhookCallback(this.bot, 'aws-lambda-async');
-    return cb(event, context);
+    try {
+      return await cb(event, context);
+    } catch (e) {
+      if (e.error instanceof GrammyError && e.error.error_code === 403) {
+        console.warn(`User has blocked the bot - ignore`, event);
+        // DON'T throw error - remove from queue
+        // TODO: Optionally - remove user's subscription from DB
+        return {
+          statusCode: 200,
+        };
+      } else if (e.error instanceof GrammyError && e.error.error_code === 400) {
+        console.error(
+          `Invalid message format for user`,
+          e.error.description,
+          event,
+        );
+        // DON'T throw error - data issue, not API issue
+        return {
+          statusCode: 200,
+        };
+      } else if (e.error instanceof GrammyError && e.error.error_code === 429) {
+        console.warn(`Rate limit hit for user`, event);
+        throw e;
+      }
+
+      console.error('Failed to process webhook', e, event);
+      throw e;
+    }
   }
 
   async handleBroadcast(event: any) {
@@ -157,12 +186,24 @@ export class BotService {
         };
       }
 
-      const result = await this.broadcastMessage(message, parseMode);
+      // Get all users and enqueue broadcast messages
+      const allUsers = await this.botRepository.getAllUsers();
+      const userIds = allUsers.map((user) => user.userId);
+
+      await this.notificationQueueService.enqueueBroadcastForUsers(
+        userIds,
+        message,
+        parseMode,
+      );
 
       return {
         success: true,
         message: BOT_MESSAGES.BROADCAST.COMPLETED,
-        statistics: result,
+        statistics: {
+          total: userIds.length,
+          queued: userIds.length,
+          method: 'queue',
+        },
       };
     } catch (error) {
       console.error('Broadcast error:', error);
@@ -211,52 +252,22 @@ export class BotService {
     );
   }
 
-  async getAllUsersWithSubscriptions() {
-    return this.botRepository.getAllUsersWithSubscriptions();
-  }
-
-  async broadcastMessage(
+  /**
+   * Send a custom message to a user
+   * Used for broadcast messages
+   */
+  sendMessageToUser(
+    userId: number,
     message: string,
     parseMode: 'Markdown' | 'MarkdownV2' | 'HTML' = 'Markdown',
   ) {
-    const allUsers = await this.botRepository.getAllUsers();
-
-    let successCount = 0;
-    let failedCount = 0;
-    const failedUsers = [];
-
-    const promises = allUsers.map(async (user) => {
-      try {
-        await this.bot.api.sendMessage(user.userId, message, {
-          parse_mode: parseMode,
-        });
-        successCount++;
-      } catch (e) {
-        failedCount++;
-        failedUsers.push(user.userId);
-
-        // Log the error for debugging purposes
-        if (e.error_code === 403) {
-          console.log(`User ${user.userId} has blocked the bot`);
-        } else if (e.error_code === 400) {
-          console.error(
-            `Invalid message format for user ${user.userId}:`,
-            e.description,
-          );
-        } else {
-          console.error(`Failed to send message to user ${user.userId}:`, e);
-        }
-      }
+    return this.bot.api.sendMessage(userId, message, {
+      parse_mode: parseMode,
     });
+  }
 
-    await Promise.all(promises);
-
-    return {
-      success: successCount,
-      failed: failedCount,
-      failedUsers,
-      total: allUsers.length,
-    };
+  async getAllUsersWithSubscriptions() {
+    return this.botRepository.getAllUsersWithSubscriptions();
   }
 
   private async waitForTextWithCancel(
@@ -356,9 +367,20 @@ export class BotService {
     );
     if (!city) return;
 
-    const cityData = await conversation.external(() =>
-      this.voeFetcherService.getCityByName(city),
-    );
+    let cityData: { id: string; name: string }[] | undefined;
+    try {
+      cityData = await conversation.external(() =>
+        this.voeFetcherService.getCityByName(city),
+      );
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+      await ctx.reply(BOT_MESSAGES.ERROR.API_UNAVAILABLE, {
+        parse_mode: 'Markdown',
+        reply_markup: this.keyboard,
+      });
+      return;
+    }
+
     if (!cityData?.length) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.CITY_NOT_FOUND, {
         parse_mode: 'Markdown',
@@ -384,9 +406,20 @@ export class BotService {
     );
     if (!street) return;
 
-    const streetData = await conversation.external(() =>
-      this.voeFetcherService.getStreetByName(selectedCity.id, street),
-    );
+    let streetData: { id: string; name: string }[] | undefined;
+    try {
+      streetData = await conversation.external(() =>
+        this.voeFetcherService.getStreetByName(selectedCity.id, street),
+      );
+    } catch (error) {
+      console.error('Error fetching streets:', error);
+      await ctx.reply(BOT_MESSAGES.ERROR.API_UNAVAILABLE, {
+        parse_mode: 'Markdown',
+        reply_markup: this.keyboard,
+      });
+      return;
+    }
+
     if (!streetData?.length) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.STREETS_NOT_FOUND, {
         parse_mode: 'Markdown',
@@ -412,9 +445,20 @@ export class BotService {
     );
     if (!house) return;
 
-    const houseData = await conversation.external(() =>
-      this.voeFetcherService.getHouseByName(selectedStreet.id, house),
-    );
+    let houseData: { id: string; name: string }[] | undefined;
+    try {
+      houseData = await conversation.external(() =>
+        this.voeFetcherService.getHouseByName(selectedStreet.id, house),
+      );
+    } catch (error) {
+      console.error('Error fetching houses:', error);
+      await ctx.reply(BOT_MESSAGES.ERROR.API_UNAVAILABLE, {
+        parse_mode: 'Markdown',
+        reply_markup: this.keyboard,
+      });
+      return;
+    }
+
     if (!houseData?.length) {
       await ctx.reply(BOT_MESSAGES.SUBSCRIPTION.HOUSES_NOT_FOUND, {
         parse_mode: 'Markdown',
