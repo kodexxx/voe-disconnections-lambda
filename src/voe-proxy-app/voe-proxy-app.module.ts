@@ -57,9 +57,6 @@ function createModule() {
   const voeApiController = new VoeApiController(sessionPoolService);
 
   return {
-    redis,
-    redlock,
-    sessionPoolService,
     voeApiController,
   };
 }
