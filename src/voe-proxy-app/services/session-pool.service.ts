@@ -4,39 +4,11 @@
  */
 
 import { Redis } from 'ioredis';
-import axios, { AxiosInstance } from 'axios';
+import { AxiosInstance } from 'axios';
 import Redlock from 'redlock';
-
-interface SessionInfo {
-  id: string;
-  sessionId: string; // FlareSolverr session ID
-  cookies: Array<{
-    name: string;
-    value: string;
-    domain: string;
-    path: string;
-  }>;
-  userAgent: string;
-  proxy?: string;
-  createdAt: number;
-  lastUsedAt: number;
-  requestCount: number;
-  failCount: number;
-  refreshingAt?: number; // Timestamp when session started refreshing
-}
-
-interface FlareSolverrResponse {
-  status: string;
-  message: string;
-  solution: {
-    url: string;
-    status: number;
-    cookies: any[];
-    userAgent: string;
-    headers: Record<string, string>;
-    response: string;
-  };
-}
+import { SessionInfo } from '../interfaces/session-info.interface';
+import { FlareSolverrResponse } from '../interfaces/flaresolverr-response.interface';
+import { VoeProxyAppConfig } from '../voe-proxy-app.config';
 
 export class SessionPoolService {
   private readonly redis: Redis;
@@ -44,12 +16,12 @@ export class SessionPoolService {
   private readonly redlock: Redlock;
   private readonly axiosClient: AxiosInstance;
 
-  private readonly POOL_SIZE = 10; // Changed from 10 to 1 for faster startup
+  private readonly POOL_SIZE: number;
   private readonly SESSION_PREFIX = 'voe:pool:session';
   private readonly LOCK_PREFIX = 'voe:lock:session';
   private readonly LOCK_TTL = 60000; // 60 seconds (FlareSolverr can take 15-30s)
-  private readonly SESSION_TTL = 300000; // 5 minutes - consider session stale after this
-  private readonly HEALTH_CHECK_INTERVAL = 60000; // 1 minute
+  private readonly SESSION_TTL: number;
+  private readonly HEALTH_CHECK_INTERVAL: number;
   private readonly INIT_URL: string;
   private readonly proxies: string[];
   private isInitialized = false;
@@ -57,40 +29,22 @@ export class SessionPoolService {
   private healthCheckInterval?: NodeJS.Timeout;
 
   constructor(
-    redisUrl: string,
-    flaresolverrUrl: string,
+    redis: Redis,
+    flaresolverr: AxiosInstance,
+    axiosClient: AxiosInstance,
+    redlock: Redlock,
     initUrl: string,
     proxies: string[] = [],
   ) {
     this.INIT_URL = initUrl;
-    this.redis = new Redis(redisUrl);
+    this.redis = redis;
+    this.flaresolverr = flaresolverr;
+    this.axiosClient = axiosClient;
+    this.redlock = redlock;
     this.proxies = proxies;
-
-    // Redlock for distributed locking
-    this.redlock = new Redlock([this.redis], {
-      driftFactor: 0.01,
-      retryCount: 10,
-      retryDelay: 200,
-      retryJitter: 200,
-      automaticExtensionThreshold: 30000, // Auto-extend lock if operation takes >30s
-    });
-
-    this.redlock.on('error', (error) => {
-      console.error('[Redlock] Error:', error);
-    });
-
-    // FlareSolverr client
-    this.flaresolverr = axios.create({
-      baseURL: flaresolverrUrl,
-      timeout: 65000,
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    // Direct HTTP client (for using sessions)
-    this.axiosClient = axios.create({
-      timeout: 30000,
-      validateStatus: () => true,
-    });
+    this.POOL_SIZE = VoeProxyAppConfig.SESSION_POOL_SIZE;
+    this.SESSION_TTL = VoeProxyAppConfig.SESSION_TTL;
+    this.HEALTH_CHECK_INTERVAL = VoeProxyAppConfig.HEALTH_CHECK_INTERVAL;
   }
 
   /**

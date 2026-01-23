@@ -17,22 +17,13 @@ import {
   getUkraineUtcOffsetMinutes,
   mergeInterval,
 } from '../../common/utils/date.util';
-
-interface AutocompleteItem {
-  id: string;
-  name: string;
-}
+import { AutocompleteItem } from '../interfaces/autocomplete-item.interface';
 
 export class VoeApiController {
   private readonly sessionPool: SessionPoolService;
 
-  constructor(redisUrl: string, flaresolverrUrl: string, proxies: string[]) {
-    this.sessionPool = new SessionPoolService(
-      redisUrl,
-      flaresolverrUrl,
-      'https://www.voe.com.ua/disconnection/detailed',
-      proxies,
-    );
+  constructor(sessionPool: SessionPoolService) {
+    this.sessionPool = sessionPool;
   }
 
   /**

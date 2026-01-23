@@ -4,12 +4,13 @@
  */
 
 import Fastify, { FastifyInstance } from 'fastify';
-import { VoeApiController } from './controllers/voe-api.controller';
+import { VoeProxyAppConfig } from './voe-proxy-app.config';
+import { getVoeProxyAppModule } from './voe-proxy-app.module';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
-      level: process.env.LOG_LEVEL || 'info',
+      level: VoeProxyAppConfig.LOG_LEVEL,
       transport: {
         target: 'pino-pretty',
         options: {
@@ -19,23 +20,12 @@ export async function buildApp(): Promise<FastifyInstance> {
         },
       },
     },
-    requestTimeout: 120000, // 2 minutes
+    requestTimeout: VoeProxyAppConfig.REQUEST_TIMEOUT,
   });
 
-  // Get configuration
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-  const flaresolverrUrl =
-    process.env.FLARESOLVERR_URL || 'http://flaresolverr:8191/v1';
-  const proxies = process.env.VOE_PROXY_URL
-    ? process.env.VOE_PROXY_URL.split(',').map((p) => p.trim())
-    : [];
-
-  // Initialize controller
-  const voeApiController = new VoeApiController(
-    redisUrl,
-    flaresolverrUrl,
-    proxies,
-  );
+  // Get module with all services
+  const module = getVoeProxyAppModule();
+  const { voeApiController } = module;
 
   // Initialize session pool on startup (async, non-blocking)
   app.addHook('onReady', async () => {

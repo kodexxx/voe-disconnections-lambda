@@ -4,44 +4,11 @@
  */
 
 import { Redis } from 'ioredis';
-import axios, { AxiosInstance } from 'axios';
+import { AxiosInstance } from 'axios';
 import Redlock, { Lock } from 'redlock';
-
-interface SessionData {
-  sessionId: string;
-  cookies: Array<{
-    name: string;
-    value: string;
-    domain: string;
-    path: string;
-    expires?: number;
-  }>;
-  userAgent: string;
-  createdAt: number;
-  lastUsedAt: number;
-}
-
-interface FlareSolverrSession {
-  status: string;
-  message: string;
-  session: string;
-  sessions: string[];
-}
-
-interface FlareSolverrResponse {
-  status: string;
-  message: string;
-  solution: {
-    url: string;
-    status: number;
-    cookies: any[];
-    userAgent: string;
-    headers: Record<string, string>;
-    response: string;
-  };
-  startTimestamp: number;
-  endTimestamp: number;
-}
+import { SessionData } from '../interfaces/session-data.interface';
+import { FlareSolverrSession } from '../interfaces/flaresolverr-session.interface';
+import { FlareSolverrResponse } from '../interfaces/flaresolverr-response.interface';
 
 export class SessionManager {
   private readonly redis: Redis;
@@ -51,28 +18,10 @@ export class SessionManager {
   private readonly SESSION_TTL = 3600; // 1 hour
   private readonly LOCK_TTL = 30000; // 30 seconds lock timeout
 
-  constructor(redisUrl: string, flaresolverrUrl: string) {
-    this.redis = new Redis(redisUrl);
-
-    // Initialize Redlock for distributed locking
-    this.redlock = new Redlock([this.redis], {
-      driftFactor: 0.01,
-      retryCount: 10,
-      retryDelay: 200,
-      retryJitter: 200,
-      automaticExtensionThreshold: 500,
-    });
-
-    // Redlock error handling
-    this.redlock.on('error', (error) => {
-      console.error('[Redlock] Error:', error);
-    });
-
-    this.flaresolverr = axios.create({
-      baseURL: flaresolverrUrl,
-      timeout: 65000,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  constructor(redis: Redis, flaresolverr: AxiosInstance, redlock: Redlock) {
+    this.redis = redis;
+    this.flaresolverr = flaresolverr;
+    this.redlock = redlock;
   }
 
   /**

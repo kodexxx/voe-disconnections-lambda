@@ -6,15 +6,16 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { buildApp } from './app';
-
-const PORT = parseInt(process.env.PORT || '3001', 10);
-const HOST = process.env.HOST || '0.0.0.0';
+import { VoeProxyAppConfig } from './voe-proxy-app.config';
 
 async function start() {
   try {
     const app = await buildApp();
 
-    await app.listen({ port: PORT, host: HOST });
+    await app.listen({
+      port: VoeProxyAppConfig.PORT,
+      host: VoeProxyAppConfig.HOST,
+    });
 
     console.log(`
 ╔════════════════════════════════════════════╗
@@ -22,8 +23,8 @@ async function start() {
 ║   Powered by FlareSolverr                  ║
 ╚════════════════════════════════════════════╝
 
-🚀 Server listening on http://${HOST}:${PORT}
-📡 FlareSolverr: ${process.env.FLARESOLVERR_URL || 'http://flaresolverr:8191/v1'}
+🚀 Server listening on http://${VoeProxyAppConfig.HOST}:${VoeProxyAppConfig.PORT}
+📡 FlareSolverr: ${VoeProxyAppConfig.FLARESOLVERR_URL}
 ⚡ Ready to bypass Cloudflare!
     `);
 
