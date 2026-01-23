@@ -8,7 +8,6 @@ import axios from 'axios';
 import Redlock from 'redlock';
 import { VoeProxyAppConfig } from './voe-proxy-app.config';
 import { SessionPoolService } from './services/session-pool.service';
-import { SessionManager } from './services/session-manager.service';
 import { VoeApiController } from './controllers/voe-api.controller';
 
 // Single instance cache (no need for createCachedModule pattern in non-Lambda environment)
@@ -44,9 +43,6 @@ function createModule() {
     validateStatus: () => true,
   });
 
-  // Session Manager (used by SmartFetcherService)
-  const sessionManager = new SessionManager(redis, flaresolverrClient, redlock);
-
   // Session Pool Service (main service for VOE API)
   const sessionPoolService = new SessionPoolService(
     redis,
@@ -63,7 +59,6 @@ function createModule() {
   return {
     redis,
     redlock,
-    sessionManager,
     sessionPoolService,
     voeApiController,
   };
