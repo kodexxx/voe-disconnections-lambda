@@ -114,5 +114,5 @@
 npm install
 
 # Запустити в dev режимі
-npm run dev:proxy
+npm run proxy:dev
 ```
