@@ -13,10 +13,7 @@ COPY tsconfig.json ./
 RUN npm ci
 
 # Copy source code (voe-proxy-app + dependencies)
-COPY src/voe-proxy-app ./src/voe-proxy-app
-COPY src/disconnections/interfaces ./src/disconnections/interfaces
-COPY src/voe-fetcher/voe-fetcher.constants.ts ./src/voe-fetcher/
-COPY src/common/utils ./src/common/utils
+COPY . .
 
 # Build TypeScript
 RUN npm run build
