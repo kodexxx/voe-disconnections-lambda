@@ -72,7 +72,7 @@ export class DisconnectionsRepository {
           },
         }),
         ...(update.queueName && {
-          value: {
+          queueName: {
             S: update.queueName,
           },
         }),
