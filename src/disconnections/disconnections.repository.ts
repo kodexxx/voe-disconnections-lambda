@@ -71,6 +71,11 @@ export class DisconnectionsRepository {
             S: JSON.stringify(update.value),
           },
         }),
+        ...(update.queueName && {
+          value: {
+            S: update.queueName,
+          },
+        }),
         lastUpdatedAt: {
           S: new Date().toISOString(),
         },
@@ -86,6 +91,7 @@ export class DisconnectionsRepository {
       args: item.args.S,
       alias: item.alias.S,
       lastUpdatedAt: item.lastUpdatedAt?.S,
+      queueName: item.queueName?.S,
       value: value.map((v) => ({
         ...v,
         from: new Date(v.from),

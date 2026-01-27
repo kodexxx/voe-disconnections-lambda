@@ -1,8 +1,8 @@
-import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
 import * as querystring from 'querystring';
 import axios, { AxiosInstance } from 'axios';
 import { Config } from '../config';
 import { randomChoice } from '../common/utils/array.utils';
+import {DisconnectionsResultInterface} from "../disconnections/interfaces/disconnections.result.interface";
 
 export class VoeFetcherService {
   private readonly axiosInstance: AxiosInstance;
@@ -21,7 +21,7 @@ export class VoeFetcherService {
     cityId: string,
     streetId: string,
     houseId: string,
-  ): Promise<VoeDisconnectionValueItem[]> {
+  ): Promise<DisconnectionsResultInterface> {
     const proxyUrl = randomChoice(this.proxyUrls);
     if (!proxyUrl) {
       throw new Error('No VOE_PROXY_URL configured');
@@ -42,7 +42,10 @@ export class VoeFetcherService {
       throw new Error(response.data?.error || 'Failed to fetch disconnections');
     }
 
-    return response.data.data || [];
+    return {
+      intervals: response?.data?.data ?? [],
+      queueName: response?.data?.queueName
+    }
   }
 
   async getCityByName(

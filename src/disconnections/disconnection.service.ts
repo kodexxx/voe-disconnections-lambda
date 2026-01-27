@@ -72,7 +72,8 @@ export class DisconnectionService {
 
     await this.updateDisconnection(cityId, streetId, houseId, {
       alias,
-      value: updatedSchedule,
+      value: updatedSchedule.intervals,
+      queueName: updatedSchedule.queueName,
       lastUpdatedAt: new Date().toISOString(),
     });
 

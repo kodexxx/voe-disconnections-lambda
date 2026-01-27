@@ -78,12 +78,13 @@ export class UpdateManagerService {
         streetId.toString(),
         houseId.toString(),
         existingData,
-        updatedSchedule,
+        updatedSchedule.intervals,
+          updatedSchedule.queueName,
       );
 
       await this.notifyIfChanged(
         existingData,
-        updatedSchedule,
+        updatedSchedule.intervals,
         userIds,
         subscriptionArgs,
         elapse,
@@ -100,11 +101,13 @@ export class UpdateManagerService {
     houseId: string,
     existingData: any,
     updatedSchedule: VoeDisconnectionValueItem[],
+    queueName: string,
   ) {
     const updatedEntity = {
       ...existingData,
       value: updatedSchedule,
       lastUpdatedAt: new Date().toISOString(),
+      queueName
     };
 
     await this.disconnectionService.updateDisconnection(

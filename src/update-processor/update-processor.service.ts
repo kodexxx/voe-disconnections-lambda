@@ -5,10 +5,6 @@ import { VoeFetcherService } from '../voe-fetcher/voe-fetcher.service';
 import { NotificationQueueService } from '../notification-processor/notification-queue.service';
 import { UpdateQueueMessage } from '../queue-manager/interfaces/update-queue-message.interface';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
-import {
-  MOCK_SUBSCRIPTION_ARGS,
-  getMockDisconnections,
-} from './utils/mock-data.utils';
 
 export class UpdateProcessorService {
   constructor(
@@ -57,18 +53,19 @@ export class UpdateProcessorService {
         streetId.toString(),
         houseId.toString(),
         existingData,
-        updatedSchedule,
+        updatedSchedule.intervals,
         lastUpdatedAt,
+          updatedSchedule.queueName
       );
 
       // 4. Check for changes and enqueue notifications
-      const hasChanges = this.checkIfChanged(existingData, updatedSchedule);
+      const hasChanges = this.checkIfChanged(existingData, updatedSchedule.intervals);
 
       if (hasChanges) {
         // Enqueue notifications to a separate queue
         await this.notificationQueueService.enqueueNotificationsForUsers(
           userIds,
-          updatedSchedule,
+          updatedSchedule.intervals,
           existingData?.alias || subscriptionArgs,
           subscriptionArgs,
           lastUpdatedAt,
@@ -109,53 +106,6 @@ export class UpdateProcessorService {
   }
 
   /**
-   * Fetch data with retries and exponential backoff
-   */
-  private async fetchWithRetry(
-    subscriptionArgs: string,
-    cityId: string,
-    streetId: string,
-    houseId: string,
-    alias?: string,
-    maxRetries = 3,
-  ): Promise<VoeDisconnectionValueItem[]> {
-    // Mock data for demo subscription
-    const isMockAddress = subscriptionArgs === MOCK_SUBSCRIPTION_ARGS;
-    if (isMockAddress) {
-      console.log(`Using mock data for ${alias}`);
-      return getMockDisconnections();
-    }
-
-    let lastError: Error;
-
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        const data = await this.voeFetcherService.getDisconnections(
-          cityId,
-          streetId,
-          houseId,
-        );
-        return data;
-      } catch (e) {
-        lastError = e as Error;
-        console.warn(
-          `Fetch attempt ${i + 1}/${maxRetries} failed for ${alias}:`,
-          e,
-        );
-
-        if (i < maxRetries - 1) {
-          // Exponential backoff: 1s, 2s, 4s
-          const delay = Math.pow(2, i) * 1000;
-          console.log(`Retrying in ${delay}ms...`);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      }
-    }
-
-    throw lastError!;
-  }
-
-  /**
    * Save updated data to DynamoDB
    */
   private async saveDisconnectionData(
@@ -165,11 +115,13 @@ export class UpdateProcessorService {
     existingData: any,
     updatedSchedule: VoeDisconnectionValueItem[],
     lastUpdatedAt: string,
+    queueName: string,
   ) {
     const updatedEntity = {
       ...existingData,
       value: updatedSchedule,
       lastUpdatedAt,
+      queueName
     };
 
     await this.disconnectionService.updateDisconnection(

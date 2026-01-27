@@ -8,5 +8,6 @@ export interface VoeDisconnectionEntity {
   args: string;
   alias: string;
   lastUpdatedAt: string;
+  queueName: string;
   value: VoeDisconnectionValueItem[];
 }
