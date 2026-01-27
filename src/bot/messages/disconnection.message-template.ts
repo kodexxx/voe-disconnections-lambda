@@ -64,9 +64,7 @@ export function disconnectionMessageTemplate(
   }
 
   // Queue info
-  const queueInfo = queueName
-    ? `\n🏷️ Черга: ${tgFormat.inlineCode(queueName)}`
-    : '';
+  const queueInfo = queueName ? `\n🏷️ ${tgFormat.inlineCode(queueName)}` : '';
 
   // Футер з посиланнями
   const footer = `\n\n━━━━━━━━━━━━━━━━\n📱 [Перейти до бота](https://t.me/voeDisconnectionRobot)\n💬 [Приєднатись до чату](https://t.me/+GkKa3Ws_x1M5ZGI6)`;
