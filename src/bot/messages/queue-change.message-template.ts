@@ -33,5 +33,5 @@ export function queueChangeMessageTemplate(
   // Footer with links
   const footer = `\n\n━━━━━━━━━━━━━━━━\n📱 [Перейти до бота](https://t.me/voeDisconnectionRobot)\n💬 [Приєднатись до чату](https://t.me/+GkKa3Ws_x1M5ZGI6)`;
 
-  return `⚠️ ${tgFormat.bold('Увага\\! Зміна черги')}\n\n📍 ${tgFormat.bold(alias)}\n\n🔄 Ваша черга змінилась:\n${tgFormat.inlineCode(oldQueueName)} ➡️ ${tgFormat.inlineCode(newQueueName)}${updateTimeText}${footer}`;
+  return `⚠️ ${tgFormat.bold('Увага! Зміна черги')}\n\n📍 ${tgFormat.bold(alias)}\n\n🔄 Ваша черга змінилась:\n${tgFormat.inlineCode(oldQueueName ?? 'n/a')} ➡️ ${tgFormat.inlineCode(newQueueName ?? 'n/a')}${updateTimeText}${footer}`;
 }
