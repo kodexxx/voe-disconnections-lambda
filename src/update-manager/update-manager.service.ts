@@ -1,6 +1,9 @@
 import { elapseTime } from '../common/utils/time.utils';
 import querystring from 'querystring';
-import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
+import {
+  VoeDisconnectionEntity,
+  VoeDisconnectionValueItem,
+} from '../disconnections/interfaces/disconnections-item.interface';
 import { BotService } from '../bot/bot.service';
 import { DisconnectionService } from '../disconnections/disconnection.service';
 import { VoeFetcherService } from '../voe-fetcher/voe-fetcher.service';
@@ -79,7 +82,7 @@ export class UpdateManagerService {
         houseId.toString(),
         existingData,
         updatedSchedule.intervals,
-          updatedSchedule.queueName,
+        updatedSchedule.queueName,
       );
 
       await this.notifyIfChanged(
@@ -107,7 +110,7 @@ export class UpdateManagerService {
       ...existingData,
       value: updatedSchedule,
       lastUpdatedAt: new Date().toISOString(),
-      queueName
+      queueName,
     };
 
     await this.disconnectionService.updateDisconnection(
@@ -119,7 +122,7 @@ export class UpdateManagerService {
   }
 
   private async notifyIfChanged(
-    existingData: any,
+    existingData: VoeDisconnectionEntity,
     updatedSchedule: VoeDisconnectionValueItem[],
     userIds: number[],
     subscriptionArgs: string,

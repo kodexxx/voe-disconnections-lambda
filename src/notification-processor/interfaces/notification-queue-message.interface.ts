@@ -21,6 +21,15 @@ export interface UpdateNotificationMessage extends NotificationQueueMessage {
   subscriptionArgs: string; // Для логування та аналітики
 }
 
+export interface QueueChangedNotificationMessage extends NotificationQueueMessage {
+  type: 'queue-change';
+  alias: string;
+  lastUpdatedAt: string;
+  subscriptionArgs: string; // Для логування та аналітики
+  oldQueueName: string;
+  newQueueName: string;
+}
+
 /**
  * Broadcast notification with custom message
  */

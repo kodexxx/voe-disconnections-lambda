@@ -3,11 +3,11 @@
  * Handles specific VOE website requests
  */
 
-import {FastifyRequest, FastifyReply} from 'fastify';
-import {SessionPoolService} from '../services/session-pool.service';
-import {parse as HTMLParse} from 'node-html-parser';
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { SessionPoolService } from '../services/session-pool.service';
+import { parse as HTMLParse } from 'node-html-parser';
 import querystring from 'querystring';
-import {VoeDisconnectionValueItem} from '../../disconnections/interfaces/disconnections-item.interface';
+import { VoeDisconnectionValueItem } from '../../disconnections/interfaces/disconnections-item.interface';
 import {
   VOE_CELL_DURATION_MS,
   VOE_HALF_CELL_DURATION_MS,
@@ -17,7 +17,7 @@ import {
   getUkraineUtcOffsetMinutes,
   mergeInterval,
 } from '../../common/utils/date.util';
-import {AutocompleteItem} from '../interfaces/autocomplete-item.interface';
+import { AutocompleteItem } from '../interfaces/autocomplete-item.interface';
 
 export class VoeApiController {
   private readonly sessionPool: SessionPoolService;
@@ -37,12 +37,12 @@ export class VoeApiController {
    * GET /disconnections?cityId=...&streetId=...&houseId=...
    */
   async getDisconnections(
-      request: FastifyRequest<{
-        Querystring: { cityId: string; streetId: string; houseId: string };
-      }>,
-      reply: FastifyReply,
+    request: FastifyRequest<{
+      Querystring: { cityId: string; streetId: string; houseId: string };
+    }>,
+    reply: FastifyReply,
   ) {
-    const {cityId, streetId, houseId} = request.query;
+    const { cityId, streetId, houseId } = request.query;
 
     if (!cityId || !streetId || !houseId) {
       reply.code(400);
@@ -67,12 +67,12 @@ export class VoeApiController {
         form_id: 'disconnection_detailed_search_form',
       });
 
-      const {data, sessionId} = await this.sessionPool.fetchWithSession<any>(
-          url,
-          {
-            method: 'POST',
-            data: formData,
-          },
+      const { data, sessionId } = await this.sessionPool.fetchWithSession<any>(
+        url,
+        {
+          method: 'POST',
+          data: formData,
+        },
       );
 
       const dataInsert = data?.find((v) => v.command === 'insert')?.data;
@@ -81,13 +81,13 @@ export class VoeApiController {
         throw new Error('No data');
       }
 
-      const {intervals, queueName} = this.parse(dataInsert);
+      const { intervals, queueName } = this.parse(dataInsert);
 
       return {
         success: true,
         sessionId,
         data: intervals,
-        queueName
+        queueName,
       };
     } catch (error) {
       console.error('[VoeApi] getDisconnections failed:', error);
@@ -103,32 +103,32 @@ export class VoeApiController {
    * GET /autocomplete/city?q=...
    */
   async autocompleteCity(
-      request: FastifyRequest<{ Querystring: { q: string } }>,
-      reply: FastifyReply,
+    request: FastifyRequest<{ Querystring: { q: string } }>,
+    reply: FastifyReply,
   ) {
-    const {q} = request.query;
+    const { q } = request.query;
 
     if (!q) {
       reply.code(400);
-      return {error: 'Missing required parameter: q'};
+      return { error: 'Missing required parameter: q' };
     }
 
     try {
-      const params = querystring.stringify({q});
+      const params = querystring.stringify({ q });
       const url = `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_city?${params}`;
 
-      const {data, sessionId} =
-          await this.sessionPool.fetchWithSession<any>(url);
+      const { data, sessionId } =
+        await this.sessionPool.fetchWithSession<any>(url);
 
       const cities: AutocompleteItem[] =
-          data?.map((item: any) => {
-            const root = HTMLParse(item.label);
-            const id = root.querySelector('div')?.attributes['data-id'];
-            return {
-              id,
-              name: item.value,
-            };
-          }) ?? [];
+        data?.map((item: any) => {
+          const root = HTMLParse(item.label);
+          const id = root.querySelector('div')?.attributes['data-id'];
+          return {
+            id,
+            name: item.value,
+          };
+        }) ?? [];
 
       return {
         success: true,
@@ -149,32 +149,32 @@ export class VoeApiController {
    * GET /autocomplete/street?cityId=...&q=...
    */
   async autocompleteStreet(
-      request: FastifyRequest<{ Querystring: { cityId: string; q: string } }>,
-      reply: FastifyReply,
+    request: FastifyRequest<{ Querystring: { cityId: string; q: string } }>,
+    reply: FastifyReply,
   ) {
-    const {cityId, q} = request.query;
+    const { cityId, q } = request.query;
 
     if (!cityId || !q) {
       reply.code(400);
-      return {error: 'Missing required parameters: cityId, q'};
+      return { error: 'Missing required parameters: cityId, q' };
     }
 
     try {
-      const params = querystring.stringify({q});
+      const params = querystring.stringify({ q });
       const url = `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_street/${cityId}?${params}`;
 
-      const {data, sessionId} =
-          await this.sessionPool.fetchWithSession<any>(url);
+      const { data, sessionId } =
+        await this.sessionPool.fetchWithSession<any>(url);
 
       const streets: AutocompleteItem[] =
-          data?.map((item: any) => {
-            const root = HTMLParse(item.label);
-            const id = root.querySelector('div')?.attributes['data-id'];
-            return {
-              id,
-              name: item.value,
-            };
-          }) ?? [];
+        data?.map((item: any) => {
+          const root = HTMLParse(item.label);
+          const id = root.querySelector('div')?.attributes['data-id'];
+          return {
+            id,
+            name: item.value,
+          };
+        }) ?? [];
 
       return {
         success: true,
@@ -195,32 +195,32 @@ export class VoeApiController {
    * GET /autocomplete/house?streetId=...&q=...
    */
   async autocompleteHouse(
-      request: FastifyRequest<{ Querystring: { streetId: string; q: string } }>,
-      reply: FastifyReply,
+    request: FastifyRequest<{ Querystring: { streetId: string; q: string } }>,
+    reply: FastifyReply,
   ) {
-    const {streetId, q} = request.query;
+    const { streetId, q } = request.query;
 
     if (!streetId || !q) {
       reply.code(400);
-      return {error: 'Missing required parameters: streetId, q'};
+      return { error: 'Missing required parameters: streetId, q' };
     }
 
     try {
-      const params = querystring.stringify({q});
+      const params = querystring.stringify({ q });
       const url = `https://www.voe.com.ua/disconnection/detailed/autocomplete/read_house/${streetId}?${params}`;
 
-      const {data, sessionId} =
-          await this.sessionPool.fetchWithSession<any>(url);
+      const { data, sessionId } =
+        await this.sessionPool.fetchWithSession<any>(url);
 
       const houses: AutocompleteItem[] =
-          data?.map((item: any) => {
-            const root = HTMLParse(item.label);
-            const id = root.querySelector('div')?.attributes['data-id'];
-            return {
-              id,
-              name: item.value,
-            };
-          }) ?? [];
+        data?.map((item: any) => {
+          const root = HTMLParse(item.label);
+          const id = root.querySelector('div')?.attributes['data-id'];
+          return {
+            id,
+            name: item.value,
+          };
+        }) ?? [];
 
       return {
         success: true,
@@ -255,23 +255,28 @@ export class VoeApiController {
     }
   }
 
-  private parse(page: string): { intervals: VoeDisconnectionValueItem[], queueName: string } {
+  private parse(page: string): {
+    intervals: VoeDisconnectionValueItem[];
+    queueName: string;
+  } {
     const root = HTMLParse(page);
     const table = root.querySelector('div.table_wrapper');
     const heads: string[] = [];
     const days = new Map<
-        string,
-        {
-          possibility: string;
-          time: string;
-          duration: number;
-        }[]
+      string,
+      {
+        possibility: string;
+        time: string;
+        duration: number;
+      }[]
     >();
-    const queueName = table.querySelector('div.disconnection-detailed-table > p')?.textContent;
+    const queueName = table.querySelector(
+      'div.disconnection-detailed-table > p',
+    )?.textContent;
     const tableItems =
-        table?.querySelectorAll(
-            'div.disconnection-detailed-table-container > div',
-        ) ?? [];
+      table?.querySelectorAll(
+        'div.disconnection-detailed-table-container > div',
+      ) ?? [];
 
     let currentDay = undefined;
     let currentDayCount = 0;
@@ -309,13 +314,13 @@ export class VoeApiController {
 
           if (isFirstHalf || isSecondHalf) {
             const possibility = item.classList.contains('confirm_1')
-                ? '(точно)'
-                : '(можливо)';
+              ? '(точно)'
+              : '(можливо)';
 
             currentDay.push({
               time: isFirstHalf
-                  ? heads[currentDayCount]
-                  : heads[currentDayCount]?.replace(/:00/, ':30'),
+                ? heads[currentDayCount]
+                : heads[currentDayCount]?.replace(/:00/, ':30'),
               possibility,
               duration: VOE_HALF_CELL_DURATION_MS,
             });
@@ -325,8 +330,8 @@ export class VoeApiController {
         // Full hour disconnection
         if (disconnected && isFullHour) {
           const possibility = item.classList.contains('confirm_1')
-              ? '(точно)'
-              : '(можливо)';
+            ? '(точно)'
+            : '(можливо)';
           currentDay.push({
             time: heads[currentDayCount],
             possibility,
@@ -339,30 +344,30 @@ export class VoeApiController {
     }
 
     const items = Object.entries(Object.fromEntries(days.entries())).flatMap(
-        ([dayStr, times]) => {
-          return times.map((time) => {
-            const matches = dayStr.match(/.* (\d{2})\.(\d{2})/);
-            const [, day, month] = matches ?? [];
+      ([dayStr, times]) => {
+        return times.map((time) => {
+          const matches = dayStr.match(/.* (\d{2})\.(\d{2})/);
+          const [, day, month] = matches ?? [];
 
-            const timeMatches = time.time.match(/(\d{2}):(\d{2})/);
-            const [, hour, minutes] = timeMatches ?? [];
+          const timeMatches = time.time.match(/(\d{2}):(\d{2})/);
+          const [, hour, minutes] = timeMatches ?? [];
 
-            const currentYear = new Date().getFullYear();
-            const from = getDateWithTzOffset(
-                currentYear,
-                Number(month) - 1,
-                Number(day),
-                Number(hour),
-                Number(minutes),
-                getUkraineUtcOffsetMinutes(),
-            );
-            const to = new Date(from.getTime() + time.duration);
+          const currentYear = new Date().getFullYear();
+          const from = getDateWithTzOffset(
+            currentYear,
+            Number(month) - 1,
+            Number(day),
+            Number(hour),
+            Number(minutes),
+            getUkraineUtcOffsetMinutes(),
+          );
+          const to = new Date(from.getTime() + time.duration);
 
-            return {from, to, possibility: time.possibility};
-          });
-        },
+          return { from, to, possibility: time.possibility };
+        });
+      },
     );
 
-    return {intervals: mergeInterval(items), queueName};
+    return { intervals: mergeInterval(items), queueName };
   }
 }

@@ -2,7 +2,7 @@ import * as querystring from 'querystring';
 import axios, { AxiosInstance } from 'axios';
 import { Config } from '../config';
 import { randomChoice } from '../common/utils/array.utils';
-import {DisconnectionsResultInterface} from "../disconnections/interfaces/disconnections.result.interface";
+import { DisconnectionsResultInterface } from '../disconnections/interfaces/disconnections.result.interface';
 
 export class VoeFetcherService {
   private readonly axiosInstance: AxiosInstance;
@@ -44,8 +44,8 @@ export class VoeFetcherService {
 
     return {
       intervals: response?.data?.data ?? [],
-      queueName: response?.data?.queueName
-    }
+      queueName: response?.data?.queueName,
+    };
   }
 
   async getCityByName(

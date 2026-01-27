@@ -4,7 +4,10 @@ import { DisconnectionService } from '../disconnections/disconnection.service';
 import { VoeFetcherService } from '../voe-fetcher/voe-fetcher.service';
 import { NotificationQueueService } from '../notification-processor/notification-queue.service';
 import { UpdateQueueMessage } from '../queue-manager/interfaces/update-queue-message.interface';
-import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
+import {
+  VoeDisconnectionEntity,
+  VoeDisconnectionValueItem
+} from '../disconnections/interfaces/disconnections-item.interface';
 
 export class UpdateProcessorService {
   constructor(
@@ -55,11 +58,14 @@ export class UpdateProcessorService {
         existingData,
         updatedSchedule.intervals,
         lastUpdatedAt,
-          updatedSchedule.queueName
+        updatedSchedule.queueName,
       );
 
       // 4. Check for changes and enqueue notifications
-      const hasChanges = this.checkIfChanged(existingData, updatedSchedule.intervals);
+      const hasChanges = this.checkIfChanged(
+        existingData,
+        updatedSchedule.intervals,
+      );
 
       if (hasChanges) {
         // Enqueue notifications to a separate queue
@@ -80,6 +86,11 @@ export class UpdateProcessorService {
         );
       }
 
+      const hasQueueChanges = this.checkIfQueueChanged(
+          existingData,
+          updatedSchedule.queueName,
+      );
+
       console.log(
         `Successfully processed ${subscriptionArgs} in ${elapse()}ms`,
       );
@@ -97,12 +108,19 @@ export class UpdateProcessorService {
    * Check if data has changed
    */
   private checkIfChanged(
-    existingData: any,
+    existingData: VoeDisconnectionEntity,
     updatedSchedule: VoeDisconnectionValueItem[],
   ): boolean {
     return (
       JSON.stringify(existingData?.value) !== JSON.stringify(updatedSchedule)
     );
+  }
+
+  private checkIfQueueChanged(
+      existingData: VoeDisconnectionEntity,
+      newQueueName: string,
+  ): boolean {
+    return existingData.queueName !== newQueueName;
   }
 
   /**
@@ -121,7 +139,7 @@ export class UpdateProcessorService {
       ...existingData,
       value: updatedSchedule,
       lastUpdatedAt,
-      queueName
+      queueName,
     };
 
     await this.disconnectionService.updateDisconnection(
