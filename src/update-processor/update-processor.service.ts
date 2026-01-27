@@ -6,7 +6,7 @@ import { NotificationQueueService } from '../notification-processor/notification
 import { UpdateQueueMessage } from '../queue-manager/interfaces/update-queue-message.interface';
 import {
   VoeDisconnectionEntity,
-  VoeDisconnectionValueItem
+  VoeDisconnectionValueItem,
 } from '../disconnections/interfaces/disconnections-item.interface';
 
 export class UpdateProcessorService {
@@ -75,6 +75,7 @@ export class UpdateProcessorService {
           existingData?.alias || subscriptionArgs,
           subscriptionArgs,
           lastUpdatedAt,
+          updatedSchedule.queueName,
         );
 
         console.log(
@@ -87,9 +88,25 @@ export class UpdateProcessorService {
       }
 
       const hasQueueChanges = this.checkIfQueueChanged(
-          existingData,
-          updatedSchedule.queueName,
+        existingData,
+        updatedSchedule.queueName,
       );
+
+      if (hasQueueChanges) {
+        // Enqueue queue change notifications
+        await this.notificationQueueService.enqueueQueueChangeNotifications(
+          userIds,
+          existingData?.alias || subscriptionArgs,
+          subscriptionArgs,
+          lastUpdatedAt,
+          existingData.queueName,
+          updatedSchedule.queueName,
+        );
+
+        console.log(
+          `Queue changed for ${existingData?.alias}: ${existingData.queueName} -> ${updatedSchedule.queueName} (${userIds.length} users)`,
+        );
+      }
 
       console.log(
         `Successfully processed ${subscriptionArgs} in ${elapse()}ms`,
@@ -117,8 +134,8 @@ export class UpdateProcessorService {
   }
 
   private checkIfQueueChanged(
-      existingData: VoeDisconnectionEntity,
-      newQueueName: string,
+    existingData: VoeDisconnectionEntity,
+    newQueueName: string,
   ): boolean {
     return existingData.queueName !== newQueueName;
   }

@@ -18,14 +18,19 @@ export interface UpdateNotificationMessage extends NotificationQueueMessage {
   data: VoeDisconnectionValueItem[];
   alias: string;
   lastUpdatedAt: string;
-  subscriptionArgs: string; // Для логування та аналітики
+  subscriptionArgs: string;
+  queueName: string;
 }
 
-export interface QueueChangedNotificationMessage extends NotificationQueueMessage {
+/**
+ * Queue change notification when user's queue number changes
+ */
+export interface QueueChangedNotificationMessage
+  extends NotificationQueueMessage {
   type: 'queue-change';
   alias: string;
   lastUpdatedAt: string;
-  subscriptionArgs: string; // Для логування та аналітики
+  subscriptionArgs: string;
   oldQueueName: string;
   newQueueName: string;
 }
@@ -38,3 +43,11 @@ export interface BroadcastNotificationMessage extends NotificationQueueMessage {
   message: string;
   parseMode?: 'Markdown' | 'MarkdownV2' | 'HTML';
 }
+
+/**
+ * Union type for all notification messages
+ */
+export type NotificationMessage =
+  | UpdateNotificationMessage
+  | QueueChangedNotificationMessage
+  | BroadcastNotificationMessage;

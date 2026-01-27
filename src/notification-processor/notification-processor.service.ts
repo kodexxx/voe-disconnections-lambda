@@ -4,6 +4,7 @@ import {
   NotificationQueueMessage,
   UpdateNotificationMessage,
   BroadcastNotificationMessage,
+  QueueChangedNotificationMessage,
 } from './interfaces/notification-queue-message.interface';
 
 export class NotificationProcessorService {
@@ -15,7 +16,11 @@ export class NotificationProcessorService {
    */
   async processNotification(
     message: NotificationQueueMessage &
-      (UpdateNotificationMessage | BroadcastNotificationMessage),
+      (
+        | UpdateNotificationMessage
+        | BroadcastNotificationMessage
+        | QueueChangedNotificationMessage
+      ),
   ): Promise<void> {
     const { userId } = message;
 
@@ -25,6 +30,8 @@ export class NotificationProcessorService {
         await this.processBroadcastNotification(message);
       } else if ('type' in message && message.type === 'update') {
         await this.processUpdateNotification(message);
+      } else if ('type' in message && message.type === 'queue-change') {
+        await this.processQueueChangeNotification(message);
       } else {
         // Backward compatibility: treat messages without type as updates
         await this.processUpdateNotification(
@@ -62,7 +69,14 @@ export class NotificationProcessorService {
   private async processUpdateNotification(
     message: UpdateNotificationMessage,
   ): Promise<void> {
-    const { userId, data, alias, lastUpdatedAt, attempt = 0 } = message;
+    const {
+      userId,
+      data,
+      alias,
+      lastUpdatedAt,
+      queueName,
+      attempt = 0,
+    } = message;
 
     console.log(
       `Sending update notification to user ${userId} for ${alias} (attempt ${attempt + 1})`,
@@ -73,6 +87,7 @@ export class NotificationProcessorService {
       data,
       alias,
       lastUpdatedAt,
+      queueName,
     );
 
     console.log(`Successfully sent update to user ${userId} for ${alias}`);
@@ -98,5 +113,37 @@ export class NotificationProcessorService {
     await this.botService.sendMessageToUser(userId, text, parseMode);
 
     console.log(`Successfully sent broadcast to user ${userId}`);
+  }
+
+  /**
+   * Process queue change notification
+   */
+  private async processQueueChangeNotification(
+    message: QueueChangedNotificationMessage,
+  ): Promise<void> {
+    const {
+      userId,
+      alias,
+      oldQueueName,
+      newQueueName,
+      lastUpdatedAt,
+      attempt = 0,
+    } = message;
+
+    console.log(
+      `Sending queue change notification to user ${userId} for ${alias} (${oldQueueName} -> ${newQueueName}, attempt ${attempt + 1})`,
+    );
+
+    await this.botService.notifyUserAboutQueueChange(
+      userId,
+      alias,
+      oldQueueName,
+      newQueueName,
+      lastUpdatedAt,
+    );
+
+    console.log(
+      `Successfully sent queue change notification to user ${userId} for ${alias}`,
+    );
   }
 }

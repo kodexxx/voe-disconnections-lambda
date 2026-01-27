@@ -3,6 +3,7 @@ import { APIGatewayProxyEventV2, Context } from 'aws-lambda';
 import { BotRepository } from './bot.repository';
 import { VoeDisconnectionValueItem } from '../disconnections/interfaces/disconnections-item.interface';
 import { disconnectionMessageTemplate } from './messages/disconnection.message-template';
+import { queueChangeMessageTemplate } from './messages/queue-change.message-template';
 import { DynamodbStorageAdapter } from './adapters/dynamodb-storage.adapter';
 import {
   conversations,
@@ -119,6 +120,7 @@ export class BotService {
           data.value,
           data.alias,
           data.lastUpdatedAt,
+          data.queueName,
         ),
         {
           parse_mode: 'MarkdownV2',
@@ -220,6 +222,7 @@ export class BotService {
     data: VoeDisconnectionValueItem[],
     alias: string,
     lastUpdatedAt?: string,
+    queueName?: string,
   ) {
     const usersToNotify =
       await this.botRepository.getUsersWithSubscription(args);
@@ -228,7 +231,7 @@ export class BotService {
       try {
         await this.bot.api.sendMessage(
           u.userId,
-          disconnectionMessageTemplate(data, alias, lastUpdatedAt),
+          disconnectionMessageTemplate(data, alias, lastUpdatedAt, queueName),
           { parse_mode: 'MarkdownV2' },
         );
       } catch (e) {
@@ -244,10 +247,11 @@ export class BotService {
     data: VoeDisconnectionValueItem[],
     alias: string,
     lastUpdatedAt?: string,
+    queueName?: string,
   ) {
     return this.bot.api.sendMessage(
       userId,
-      disconnectionMessageTemplate(data, alias, lastUpdatedAt),
+      disconnectionMessageTemplate(data, alias, lastUpdatedAt, queueName),
       { parse_mode: 'MarkdownV2' },
     );
   }
@@ -264,6 +268,28 @@ export class BotService {
     return this.bot.api.sendMessage(userId, message, {
       parse_mode: parseMode,
     });
+  }
+
+  /**
+   * Notify user about queue change
+   */
+  notifyUserAboutQueueChange(
+    userId: number,
+    alias: string,
+    oldQueueName: string,
+    newQueueName: string,
+    lastUpdatedAt: string,
+  ) {
+    return this.bot.api.sendMessage(
+      userId,
+      queueChangeMessageTemplate(
+        alias,
+        oldQueueName,
+        newQueueName,
+        lastUpdatedAt,
+      ),
+      { parse_mode: 'MarkdownV2' },
+    );
   }
 
   async getAllUsersWithSubscriptions() {
@@ -499,6 +525,7 @@ export class BotService {
         registeredDisconnection.value,
         registeredDisconnection.alias,
         registeredDisconnection.lastUpdatedAt,
+        registeredDisconnection.queueName,
       ),
       {
         parse_mode: 'MarkdownV2',

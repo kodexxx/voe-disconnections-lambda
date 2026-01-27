@@ -8,6 +8,7 @@ import {
   NotificationQueueMessage,
   UpdateNotificationMessage,
   BroadcastNotificationMessage,
+  QueueChangedNotificationMessage,
 } from './interfaces/notification-queue-message.interface';
 import { chunkArray } from '../common/utils/array.utils';
 import { Config } from '../config';
@@ -85,6 +86,7 @@ export class NotificationQueueService {
     alias: string,
     subscriptionArgs: string,
     lastUpdatedAt: string,
+    queueName: string,
   ): Promise<void> {
     const messages: UpdateNotificationMessage[] = userIds.map((userId) => ({
       type: 'update',
@@ -93,6 +95,7 @@ export class NotificationQueueService {
       alias,
       subscriptionArgs,
       lastUpdatedAt,
+      queueName,
     }));
 
     await this.enqueueNotificationBatch(messages);
@@ -113,6 +116,33 @@ export class NotificationQueueService {
       message,
       parseMode,
     }));
+
+    await this.enqueueNotificationBatch(messages);
+  }
+
+  /**
+   * Enqueue queue change notifications for multiple users
+   * Notifies users when their subscription queue number has changed
+   */
+  async enqueueQueueChangeNotifications(
+    userIds: number[],
+    alias: string,
+    subscriptionArgs: string,
+    lastUpdatedAt: string,
+    oldQueueName: string,
+    newQueueName: string,
+  ): Promise<void> {
+    const messages: QueueChangedNotificationMessage[] = userIds.map(
+      (userId) => ({
+        type: 'queue-change',
+        userId,
+        alias,
+        subscriptionArgs,
+        lastUpdatedAt,
+        oldQueueName,
+        newQueueName,
+      }),
+    );
 
     await this.enqueueNotificationBatch(messages);
   }
