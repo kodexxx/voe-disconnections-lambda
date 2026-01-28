@@ -272,7 +272,7 @@ export class VoeApiController {
     >();
     const queueName = table.querySelector(
       'div.disconnection-detailed-table > p',
-    )?.textContent;
+    )?.textContent?.trim();
     const tableItems =
       table?.querySelectorAll(
         'div.disconnection-detailed-table-container > div',
