@@ -1,9 +1,5 @@
 import { SQSEvent, SQSBatchResponse } from 'aws-lambda';
-import {
-  NotificationQueueMessage,
-  UpdateNotificationMessage,
-  BroadcastNotificationMessage,
-} from './interfaces/notification-queue-message.interface';
+import { NotificationMessage } from './interfaces/notification-queue-message.interface';
 import { getNotificationProcessorModule } from './notification-processor.module';
 
 /**
@@ -17,25 +13,16 @@ export const notificationProcessor = async (
     `NotificationProcessor received ${event.Records.length} notifications to send`,
   );
 
-  const notificationProcessorModule = getNotificationProcessorModule();
+  const { notificationProcessorController } = getNotificationProcessorModule();
   const batchItemFailures: SQSBatchResponse['batchItemFailures'] = [];
 
-  // Process each message from batch
   for (const record of event.Records) {
     try {
-      const message: NotificationQueueMessage &
-        (UpdateNotificationMessage | BroadcastNotificationMessage) = JSON.parse(
-        record.body,
-      );
-      await notificationProcessorModule.notificationProcessorController.processNotification(
-        message,
-      );
+      const message = JSON.parse(record.body) as NotificationMessage;
+      await notificationProcessorController.processNotification(message);
     } catch (e) {
       console.error(`Failed to process notification ${record.messageId}:`, e);
-      // Add to failures - SQS will retry only this message
-      batchItemFailures.push({
-        itemIdentifier: record.messageId,
-      });
+      batchItemFailures.push({ itemIdentifier: record.messageId });
     }
   }
 
@@ -57,34 +44,16 @@ export const notificationDlqMonitor = async (event: SQSEvent) => {
 
   for (const record of event.Records) {
     try {
-      const message: NotificationQueueMessage &
-        (UpdateNotificationMessage | BroadcastNotificationMessage) = JSON.parse(
-        record.body,
-      );
+      const message = JSON.parse(record.body) as NotificationMessage;
 
-      const baseInfo = {
+      console.error('Failed notification:', {
+        type: message.type,
         userId: message.userId,
         attempts: message.attempt,
         enqueuedAt: message.enqueuedAt,
         error: message.originalError,
         messageId: record.messageId,
-      };
-
-      // Log type-specific details
-      if ('type' in message && message.type === 'update') {
-        console.error('Failed update notification:', {
-          ...baseInfo,
-          alias: message.alias,
-          subscriptionArgs: message.subscriptionArgs,
-        });
-      } else if ('type' in message && message.type === 'broadcast') {
-        console.error('Failed broadcast notification:', {
-          ...baseInfo,
-          messagePreview: message.message.substring(0, 50),
-        });
-      } else {
-        console.error('Failed notification (legacy):', baseInfo);
-      }
+      });
 
       // TODO: Save to DynamoDB failed-notifications table for analytics
       // TODO: Optional - send to CloudWatch Logs Insights
@@ -95,6 +64,5 @@ export const notificationDlqMonitor = async (event: SQSEvent) => {
     }
   }
 
-  // Delete messages from DLQ after logging
   return { statusCode: 200 };
 };
