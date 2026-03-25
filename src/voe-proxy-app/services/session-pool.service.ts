@@ -9,6 +9,7 @@ import Redlock from 'redlock';
 import { SessionInfo } from '../interfaces/session-info.interface';
 import { FlareSolverrResponse } from '../interfaces/flaresolverr-response.interface';
 import { VoeProxyAppConfig } from '../voe-proxy-app.config';
+import { HttpProxyAgent, HttpsProxyAgent } from 'hpagent';
 
 export class SessionPoolService {
   private readonly redis: Redis;
@@ -344,6 +345,14 @@ export class SessionPoolService {
       const response =
         options?.method === 'POST'
           ? await this.axiosClient.post(url, options.data, {
+              ...(session.proxy && {
+                httpAgent: new HttpProxyAgent({
+                  proxy: session.proxy,
+                }),
+                httpsAgent: new HttpsProxyAgent({
+                  proxy: session.proxy,
+                }),
+              }),
               headers: {
                 ...headers,
                 'Content-Type':
