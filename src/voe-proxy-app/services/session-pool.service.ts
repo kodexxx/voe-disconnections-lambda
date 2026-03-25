@@ -363,6 +363,14 @@ export class SessionPoolService {
           : await this.axiosClient.get(url, {
               headers,
               validateStatus: () => true,
+              ...(session.proxy && {
+                httpAgent: new HttpProxyAgent({
+                  proxy: session.proxy,
+                }),
+                httpsAgent: new HttpsProxyAgent({
+                  proxy: session.proxy,
+                }),
+              }),
             });
 
       // Check if blocked by Cloudflare
@@ -390,6 +398,14 @@ export class SessionPoolService {
                   'Content-Type':
                     'application/x-www-form-urlencoded; charset=UTF-8',
                 },
+                ...(session.proxy && {
+                  httpAgent: new HttpProxyAgent({
+                    proxy: session.proxy,
+                  }),
+                  httpsAgent: new HttpsProxyAgent({
+                    proxy: session.proxy,
+                  }),
+                }),
                 validateStatus: () => true,
               })
             : await this.axiosClient.get(url, {
@@ -397,6 +413,14 @@ export class SessionPoolService {
                   ...headers,
                   Cookie: newCookies,
                 },
+                ...(session.proxy && {
+                  httpAgent: new HttpProxyAgent({
+                    proxy: session.proxy,
+                  }),
+                  httpsAgent: new HttpsProxyAgent({
+                    proxy: session.proxy,
+                  }),
+                }),
                 validateStatus: () => true,
               });
 
@@ -433,6 +457,14 @@ export class SessionPoolService {
                 'Content-Type':
                   'application/x-www-form-urlencoded; charset=UTF-8',
               },
+              ...(session.proxy && {
+                httpAgent: new HttpProxyAgent({
+                  proxy: session.proxy,
+                }),
+                httpsAgent: new HttpsProxyAgent({
+                  proxy: session.proxy,
+                }),
+              }),
               validateStatus: () => true,
             })
           : await this.axiosClient.get(url, {
@@ -440,6 +472,14 @@ export class SessionPoolService {
                 ...headers,
                 Cookie: newCookies,
               },
+              ...(session.proxy && {
+                httpAgent: new HttpProxyAgent({
+                  proxy: session.proxy,
+                }),
+                httpsAgent: new HttpsProxyAgent({
+                  proxy: session.proxy,
+                }),
+              }),
               validateStatus: () => true,
             });
 
@@ -590,6 +630,14 @@ export class SessionPoolService {
           'Accept-Language': 'uk-UA,uk;q=0.9,en-US;q=0.8,en;q=0.7',
         },
         timeout: 10000,
+        ...(session.proxy && {
+          httpAgent: new HttpProxyAgent({
+            proxy: session.proxy,
+          }),
+          httpsAgent: new HttpsProxyAgent({
+            proxy: session.proxy,
+          }),
+        }),
         validateStatus: () => true,
       });
 
