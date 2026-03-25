@@ -506,7 +506,12 @@ export class SessionPoolService {
     };
 
     if (proxy) {
-      request.proxy = { url: proxy };
+      const proxyUrl = new URL(proxy);
+      request.proxy = {
+        url: proxyUrl.origin,
+        username: proxyUrl.username,
+        password: proxyUrl.password,
+      };
     }
 
     if (postData) {
