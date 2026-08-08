@@ -19,6 +19,7 @@ import { MyContext, MyConversation } from './types/conversation.types';
 import { VoeLocationItem } from '../voe-fetcher/interfaces/voe-location-item.interface';
 import { BOT_MESSAGES, BOT_IDS } from './constants/messages.constants';
 import { NotificationQueueService } from '../notification-processor/notification-queue.service';
+import { Config } from '../config';
 
 export class BotService {
   private readonly mainMenu: Menu;
@@ -33,6 +34,12 @@ export class BotService {
     private readonly disconnectionService: DisconnectionService,
     private readonly notificationQueueService: NotificationQueueService,
   ) {
+    // TODO: temporary - remove this block once disconnections resume and the bot is needed again
+    if (Config.BOT_MAINTENANCE_MODE) {
+      this.setupMaintenanceMode();
+      return;
+    }
+
     // Initialize menus and keyboard
     this.settingsMenu = new Menu(BOT_IDS.MENU.SETTINGS)
       .text(BOT_MESSAGES.MENU.SET_SUBSCRIPTION, (ctx) =>
@@ -135,6 +142,18 @@ export class BotService {
       return ctx.reply(BOT_MESSAGES.START.WELCOME, {
         parse_mode: 'Markdown',
         reply_markup: this.keyboard,
+      });
+    });
+  }
+
+  /**
+   * TODO: temporary - remove once disconnections resume and the bot is needed again.
+   * Replies to every incoming message with a notice that the bot is paused.
+   */
+  private setupMaintenanceMode(): void {
+    this.bot.on('message', async (ctx) => {
+      await ctx.reply(BOT_MESSAGES.MAINTENANCE.NOTICE, {
+        parse_mode: 'Markdown',
       });
     });
   }

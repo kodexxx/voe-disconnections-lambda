@@ -15,6 +15,9 @@ provider:
     GRAMMY_STATE_TABLE: ${self:custom.grammyStateTable}
     TELEGRAM_BOT_TOKEN: ${self:custom.botToken}
     VOE_PROXY_URL: ${self:custom.voeProxyUrl, ''}
+    # Temporary: bot replies to all messages that it's paused (no active disconnections).
+    # Set to 'false' and deploy to re-enable the bot.
+    BOT_MAINTENANCE_MODE: ${self:custom.botMaintenanceMode, 'true'}
     # Enable HTTP connection reuse for AWS SDK - critical for performance
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
     NODE_OPTIONS: '--enable-source-maps'

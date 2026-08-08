@@ -97,6 +97,16 @@ export const BOT_MESSAGES = {
     BACK: '◀️ Назад',
   },
 
+  // Maintenance mode (temporary - bot paused, no active disconnections)
+  MAINTENANCE: {
+    NOTICE:
+      '⏳ *Бот тимчасово призупинив роботу*\n\n' +
+      '😌 Наразі відключень електроенергії немає, тому бот не активний.\n\n' +
+      '🙏 Сподіваємось, що він вам не знадобиться. Але щойно з’являться відключення — бот одразу відновить роботу!\n\n' +
+      '💬 Питання чи пропозиції? Приєднуйтесь до нашого чату:\n' +
+      '👉 https://t.me/+Bv-7j4-qmwY4Yjgy',
+  },
+
   // Broadcast
   BROADCAST: {
     COMPLETED: '✅ Broadcast successfully completed',
