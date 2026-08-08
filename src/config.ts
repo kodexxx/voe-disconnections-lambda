@@ -10,4 +10,6 @@ export const Config = {
   NOTIFICATION_QUEUE_URL: process.env.NOTIFICATION_QUEUE_URL,
   VOE_PROXY_URL:
     process.env?.VOE_PROXY_URL?.split(',').map((s) => s.trim()) ?? [],
+  // TODO: remove once disconnections resume and the bot is needed again
+  BOT_MAINTENANCE_MODE: process.env.BOT_MAINTENANCE_MODE !== 'false',
 } as const;
